@@ -1,9 +1,44 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IsPackable>true</IsPackable>
+    <PackageId>BTShift.ClientManagement.Contract</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>BTShift</Authors>
+    <Company>BTShift</Company>
+    <Product>BTShift Platform</Product>
+    <Description>Client Management Service contract package containing gRPC proto definitions and event contracts</Description>
+    <PackageProjectUrl>https://github.com/BTShift/client-management-service</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/BTShift/client-management-service</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>btshift;client-management;grpc;contract</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.25.1" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.59.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.59.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos\client.proto" GrpcServices="Both" />
+    <Protobuf Include="Protos\google\api\annotations.proto" GrpcServices="None" />
+    <Protobuf Include="Protos\google\api\http.proto" GrpcServices="None" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Protos\**\*.proto">
+      <Pack>true</Pack>
+      <PackagePath>content\Protos</PackagePath>
+    </Content>
+  </ItemGroup>
 
 </Project>

@@ -10,6 +10,19 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.19" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.8" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.59.0" />
+    <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.59.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Grpc.JsonTranscoding" Version="8.0.19" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClientManagement.Application\ClientManagement.Application.csproj" />
+    <ProjectReference Include="..\ClientManagement.Infrastructure\ClientManagement.Infrastructure.csproj" />
+    <ProjectReference Include="..\ClientManagement.Contract\ClientManagement.Contract.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="..\ClientManagement.Contract\Protos\client.proto" GrpcServices="Server" />
   </ItemGroup>
 
 </Project>

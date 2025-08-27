@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+
+option csharp_namespace = "ClientManagement.Contract";
+
+package clientmanagement;
+
+// Client management service for managing client records
+service ClientManagement {
+  // Get a specific client by ID
+  rpc GetClient (ClientRequest) returns (ClientResponse) {
+    option (google.api.http) = {
+      get: "/api/clients/{client_id}"
+    };
+  }
+  
+  // List all clients for a tenant
+  rpc ListClients (ClientListRequest) returns (ClientListResponse) {
+    option (google.api.http) = {
+      get: "/api/clients"
+    };
+  }
+  
+  // Create a new client
+  rpc CreateClient (CreateClientRequest) returns (ClientResponse) {
+    option (google.api.http) = {
+      post: "/api/clients"
+      body: "*"
+    };
+  }
+  
+  // Update an existing client
+  rpc UpdateClient (UpdateClientRequest) returns (ClientResponse) {
+    option (google.api.http) = {
+      put: "/api/clients/{client_id}"
+      body: "*"
+    };
+  }
+  
+  // Delete a client
+  rpc DeleteClient (DeleteClientRequest) returns (DeleteClientResponse) {
+    option (google.api.http) = {
+      delete: "/api/clients/{client_id}"
+    };
+  }
+}
+
+message ClientRequest {
+  string client_id = 1;
+}
+
+message ClientResponse {
+  string client_id = 1;
+  string name = 2;
+  string email = 3;
+  string phone = 4;
+  string address = 5;
+  string status = 6;
+  string tenant_id = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+message ClientListRequest {
+  string tenant_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message ClientListResponse {
+  repeated ClientInfo clients = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message ClientInfo {
+  string client_id = 1;
+  string name = 2;
+  string email = 3;
+  string status = 4;
+}
+
+message CreateClientRequest {
+  string name = 1;
+  string email = 2;
+  string phone = 3;
+  string address = 4;
+  string tenant_id = 5;
+}
+
+message UpdateClientRequest {
+  string client_id = 1;
+  string name = 2;
+  string email = 3;
+  string phone = 4;
+  string address = 5;
+  string status = 6;
+}
+
+message DeleteClientRequest {
+  string client_id = 1;
+}
+
+message DeleteClientResponse {
+  bool success = 1;
+  string message = 2;
+}
