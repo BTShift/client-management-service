@@ -44,6 +44,66 @@ service ClientManagement {
       delete: "/api/clients/{client_id}"
     };
   }
+  
+  // Group Management RPCs
+  
+  // Create a new client group
+  rpc CreateGroup (CreateGroupRequest) returns (GroupResponse) {
+    option (google.api.http) = {
+      post: "/api/groups"
+      body: "*"
+    };
+  }
+  
+  // Update an existing group
+  rpc UpdateGroup (UpdateGroupRequest) returns (GroupResponse) {
+    option (google.api.http) = {
+      put: "/api/groups/{group_id}"
+      body: "*"
+    };
+  }
+  
+  // Delete a group
+  rpc DeleteGroup (DeleteGroupRequest) returns (DeleteGroupResponse) {
+    option (google.api.http) = {
+      delete: "/api/groups/{group_id}"
+    };
+  }
+  
+  // List all groups for a tenant
+  rpc ListGroups (ListGroupsRequest) returns (ListGroupsResponse) {
+    option (google.api.http) = {
+      get: "/api/groups"
+    };
+  }
+  
+  // Add a client to a group
+  rpc AddClientToGroup (AddClientToGroupRequest) returns (AddClientToGroupResponse) {
+    option (google.api.http) = {
+      post: "/api/groups/{group_id}/clients/{client_id}"
+    };
+  }
+  
+  // Remove a client from a group
+  rpc RemoveClientFromGroup (RemoveClientFromGroupRequest) returns (RemoveClientFromGroupResponse) {
+    option (google.api.http) = {
+      delete: "/api/groups/{group_id}/clients/{client_id}"
+    };
+  }
+  
+  // Get all clients in a group
+  rpc GetGroupClients (GetGroupClientsRequest) returns (GetGroupClientsResponse) {
+    option (google.api.http) = {
+      get: "/api/groups/{group_id}/clients"
+    };
+  }
+  
+  // Get all groups for a client
+  rpc GetClientGroups (GetClientGroupsRequest) returns (GetClientGroupsResponse) {
+    option (google.api.http) = {
+      get: "/api/clients/{client_id}/groups"
+    };
+  }
 }
 
 message ClientRequest {
@@ -106,4 +166,98 @@ message DeleteClientRequest {
 message DeleteClientResponse {
   bool success = 1;
   string message = 2;
+}
+
+// Group Management Messages
+
+message CreateGroupRequest {
+  string name = 1;
+  string description = 2;
+  string tenant_id = 3;
+}
+
+message UpdateGroupRequest {
+  string group_id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message DeleteGroupRequest {
+  string group_id = 1;
+}
+
+message DeleteGroupResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GroupResponse {
+  string group_id = 1;
+  string name = 2;
+  string description = 3;
+  string tenant_id = 4;
+  string created_at = 5;
+  string updated_at = 6;
+  int32 client_count = 7;
+}
+
+message ListGroupsRequest {
+  string tenant_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  string search_term = 4;
+}
+
+message ListGroupsResponse {
+  repeated GroupInfo groups = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GroupInfo {
+  string group_id = 1;
+  string name = 2;
+  string description = 3;
+  int32 client_count = 4;
+}
+
+message AddClientToGroupRequest {
+  string group_id = 1;
+  string client_id = 2;
+}
+
+message AddClientToGroupResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message RemoveClientFromGroupRequest {
+  string group_id = 1;
+  string client_id = 2;
+}
+
+message RemoveClientFromGroupResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetGroupClientsRequest {
+  string group_id = 1;
+  string tenant_id = 2;
+}
+
+message GetGroupClientsResponse {
+  repeated ClientInfo clients = 1;
+  int32 total_count = 2;
+}
+
+message GetClientGroupsRequest {
+  string client_id = 1;
+  string tenant_id = 2;
+}
+
+message GetClientGroupsResponse {
+  repeated GroupInfo groups = 1;
+  int32 total_count = 2;
 }
