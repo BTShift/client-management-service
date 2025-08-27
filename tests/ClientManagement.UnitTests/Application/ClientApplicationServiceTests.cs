@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using ClientManagement.Application.Services;
 using ClientManagement.Application.Interfaces;
 using ClientManagement.Domain.Entities;
+using MassTransit;
 
 namespace ClientManagement.UnitTests.Application;
 
@@ -12,13 +13,15 @@ public class ClientApplicationServiceTests
 {
     private readonly Mock<IClientRepository> _mockRepository;
     private readonly Mock<ILogger<ClientApplicationService>> _mockLogger;
+    private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
     private readonly ClientApplicationService _service;
 
     public ClientApplicationServiceTests()
     {
         _mockRepository = new Mock<IClientRepository>();
         _mockLogger = new Mock<ILogger<ClientApplicationService>>();
-        _service = new ClientApplicationService(_mockRepository.Object, _mockLogger.Object);
+        _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+        _service = new ClientApplicationService(_mockRepository.Object, _mockLogger.Object, _mockPublishEndpoint.Object);
     }
 
     [Fact]

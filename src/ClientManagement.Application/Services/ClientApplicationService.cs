@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using ClientManagement.Application.Interfaces;
 using ClientManagement.Domain.Entities;
+using MassTransit;
+using ClientManagement.Contract.Events;
 
 namespace ClientManagement.Application.Services;
 
@@ -17,11 +19,16 @@ public class ClientApplicationService : IClientApplicationService
 {
     private readonly IClientRepository _clientRepository;
     private readonly ILogger<ClientApplicationService> _logger;
+    private readonly IPublishEndpoint _publishEndpoint;
 
-    public ClientApplicationService(IClientRepository clientRepository, ILogger<ClientApplicationService> logger)
+    public ClientApplicationService(
+        IClientRepository clientRepository, 
+        ILogger<ClientApplicationService> logger,
+        IPublishEndpoint publishEndpoint)
     {
         _clientRepository = clientRepository;
         _logger = logger;
+        _publishEndpoint = publishEndpoint;
     }
 
     public async Task<Client> CreateClientAsync(string tenantId, string name, string cif, string email, string phone, string address)
@@ -59,6 +66,26 @@ public class ClientApplicationService : IClientApplicationService
         
         _logger.LogInformation("Client created successfully with ID {ClientId} for tenant {TenantId}", 
             createdClient.Id, tenantId);
+        
+        // Publish ClientCreatedEvent
+        var correlationId = Guid.NewGuid();
+        await _publishEndpoint.Publish(new ClientCreatedEvent
+        {
+            CorrelationId = correlationId,
+            Timestamp = DateTime.UtcNow,
+            ClientId = createdClient.Id.ToString(),
+            TenantId = tenantId,
+            Name = createdClient.Name,
+            Email = createdClient.Email,
+            Phone = createdClient.Phone,
+            Address = createdClient.Address,
+            Status = createdClient.Status.ToString(),
+            CreatedAt = createdClient.CreatedAt,
+            CreatedBy = "System" // TODO: Get from IUserContext when implemented
+        });
+        
+        _logger.LogInformation("Published ClientCreatedEvent for client {ClientId} with correlation ID {CorrelationId}", 
+            createdClient.Id, correlationId);
         
         return createdClient;
     }
@@ -119,6 +146,26 @@ public class ClientApplicationService : IClientApplicationService
         else
         {
             _logger.LogInformation("Client {ClientId} updated successfully for tenant {TenantId}", clientId, tenantId);
+            
+            // Publish ClientUpdatedEvent
+            var correlationId = Guid.NewGuid();
+            await _publishEndpoint.Publish(new ClientUpdatedEvent
+            {
+                CorrelationId = correlationId,
+                Timestamp = DateTime.UtcNow,
+                ClientId = updatedClient.Id.ToString(),
+                TenantId = tenantId,
+                Name = updatedClient.Name,
+                Email = updatedClient.Email,
+                Phone = updatedClient.Phone,
+                Address = updatedClient.Address,
+                Status = updatedClient.Status.ToString(),
+                UpdatedAt = updatedClient.UpdatedAt,
+                UpdatedBy = "System" // TODO: Get from IUserContext when implemented
+            });
+            
+            _logger.LogInformation("Published ClientUpdatedEvent for client {ClientId} with correlation ID {CorrelationId}", 
+                clientId, correlationId);
         }
         
         return updatedClient;
@@ -137,6 +184,21 @@ public class ClientApplicationService : IClientApplicationService
             _logger.LogInformation(
                 "AUDIT: Client soft delete successful - ClientId: {ClientId}, TenantId: {TenantId}, DeletedBy: {DeletedBy}, Timestamp: {Timestamp}",
                 clientId, tenantId, deletedBy ?? "Unknown", DateTime.UtcNow);
+            
+            // Publish ClientDeletedEvent
+            var correlationId = Guid.NewGuid();
+            await _publishEndpoint.Publish(new ClientDeletedEvent
+            {
+                CorrelationId = correlationId,
+                Timestamp = DateTime.UtcNow,
+                ClientId = clientId.ToString(),
+                TenantId = tenantId,
+                DeletedAt = DateTime.UtcNow,
+                DeletedBy = deletedBy ?? "System"
+            });
+            
+            _logger.LogInformation("Published ClientDeletedEvent for client {ClientId} with correlation ID {CorrelationId}", 
+                clientId, correlationId);
         }
         else
         {
