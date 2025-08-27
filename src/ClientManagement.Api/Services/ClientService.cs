@@ -1,9 +1,10 @@
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
+using ClientManagement.Contract;
 
 namespace ClientManagement.Api.Services;
 
-public class ClientService : ClientManagement.ClientManagementBase
+public class ClientService : Contract.ClientManagement.ClientManagementBase
 {
     private readonly ILogger<ClientService> _logger;
 

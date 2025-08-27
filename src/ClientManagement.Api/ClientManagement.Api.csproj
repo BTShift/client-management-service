@@ -21,8 +21,5 @@
     <ProjectReference Include="..\ClientManagement.Contract\ClientManagement.Contract.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Protobuf Include="..\ClientManagement.Contract\Protos\client.proto" GrpcServices="Server" />
-  </ItemGroup>
 
 </Project>
