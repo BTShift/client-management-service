@@ -9,7 +9,7 @@ public interface IClientApplicationService
     Task<Client> CreateClientAsync(string tenantId, string name, string email, string phone, string address);
     Task<Client?> GetClientAsync(Guid clientId, string tenantId);
     Task<Client?> UpdateClientAsync(Guid clientId, string tenantId, string name, string email, string phone, string address, ClientStatus status);
-    Task<bool> DeleteClientAsync(Guid clientId, string tenantId);
+    Task<bool> DeleteClientAsync(Guid clientId, string tenantId, string? deletedBy = null);
     Task<(IList<Client> Items, int TotalCount)> ListClientsAsync(string tenantId, int page, int pageSize, string? searchTerm = null);
 }
 
@@ -106,19 +106,25 @@ public class ClientApplicationService : IClientApplicationService
         return updatedClient;
     }
 
-    public async Task<bool> DeleteClientAsync(Guid clientId, string tenantId)
+    public async Task<bool> DeleteClientAsync(Guid clientId, string tenantId, string? deletedBy = null)
     {
-        _logger.LogInformation("Soft deleting client {ClientId} for tenant {TenantId}", clientId, tenantId);
+        _logger.LogInformation("Soft deleting client {ClientId} for tenant {TenantId} by user {DeletedBy}", 
+            clientId, tenantId, deletedBy ?? "Unknown");
         
-        var result = await _clientRepository.DeleteAsync(clientId, tenantId);
+        var result = await _clientRepository.DeleteAsync(clientId, tenantId, deletedBy);
         
         if (result)
         {
-            _logger.LogInformation("Client {ClientId} soft deleted successfully for tenant {TenantId}", clientId, tenantId);
+            // Enhanced audit logging for soft delete operations
+            _logger.LogInformation(
+                "AUDIT: Client soft delete successful - ClientId: {ClientId}, TenantId: {TenantId}, DeletedBy: {DeletedBy}, Timestamp: {Timestamp}",
+                clientId, tenantId, deletedBy ?? "Unknown", DateTime.UtcNow);
         }
         else
         {
-            _logger.LogWarning("Client {ClientId} not found for deletion in tenant {TenantId}", clientId, tenantId);
+            _logger.LogWarning(
+                "AUDIT: Client soft delete failed (not found) - ClientId: {ClientId}, TenantId: {TenantId}, AttemptedBy: {DeletedBy}, Timestamp: {Timestamp}",
+                clientId, tenantId, deletedBy ?? "Unknown", DateTime.UtcNow);
         }
         
         return result;

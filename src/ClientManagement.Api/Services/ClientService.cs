@@ -2,6 +2,7 @@ using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using ClientManagement.Contract;
 using ClientManagement.Application.Services;
+using ClientManagement.Application.Interfaces;
 using ClientManagement.Domain.Entities;
 
 namespace ClientManagement.Api.Services;
@@ -10,11 +11,16 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
 {
     private readonly ILogger<ClientService> _logger;
     private readonly IClientApplicationService _clientApplicationService;
+    private readonly IUserContext<ServerCallContext> _userContext;
 
-    public ClientService(ILogger<ClientService> logger, IClientApplicationService clientApplicationService)
+    public ClientService(
+        ILogger<ClientService> logger, 
+        IClientApplicationService clientApplicationService,
+        IUserContext<ServerCallContext> userContext)
     {
         _logger = logger;
         _clientApplicationService = clientApplicationService;
+        _userContext = userContext;
     }
 
     public override async Task<ClientResponse> CreateClient(CreateClientRequest request, ServerCallContext context)
@@ -146,10 +152,11 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
                 throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid client ID format"));
             }
             
-            // Extract tenant ID from context
+            // Extract tenant ID and user information from context
             var tenantId = ExtractTenantId(null, context);
+            var deletedBy = _userContext.GetUserIdentity(context);
             
-            var result = await _clientApplicationService.DeleteClientAsync(clientId, tenantId);
+            var result = await _clientApplicationService.DeleteClientAsync(clientId, tenantId, deletedBy);
             
             return new DeleteClientResponse
             {

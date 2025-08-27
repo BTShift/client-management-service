@@ -7,7 +7,7 @@ public interface IClientRepository
     Task<Client> CreateAsync(Client client);
     Task<Client?> GetByIdAsync(Guid clientId, string tenantId);
     Task<Client?> UpdateAsync(Client client);
-    Task<bool> DeleteAsync(Guid clientId, string tenantId);
+    Task<bool> DeleteAsync(Guid clientId, string tenantId, string? deletedBy = null);
     Task<(IList<Client> Items, int TotalCount)> ListAsync(
         string tenantId, 
         int page = 1, 

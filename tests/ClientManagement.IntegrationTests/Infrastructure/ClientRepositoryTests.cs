@@ -163,6 +163,7 @@ public class ClientRepositoryTests : IDisposable
     {
         // Arrange
         var clientId = Guid.NewGuid();
+        var deletedBy = "admin@example.com";
         var client = new Client
         {
             Id = clientId,
@@ -178,7 +179,7 @@ public class ClientRepositoryTests : IDisposable
         await _context.SaveChangesAsync();
 
         // Act
-        var result = await _repository.DeleteAsync(clientId, "tenant-123");
+        var result = await _repository.DeleteAsync(clientId, "tenant-123", deletedBy);
 
         // Assert
         result.Should().BeTrue();
@@ -192,6 +193,7 @@ public class ClientRepositoryTests : IDisposable
         dbClient!.IsDeleted.Should().BeTrue();
         dbClient.DeletedAt.Should().NotBeNull();
         dbClient.DeletedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        dbClient.DeletedBy.Should().Be(deletedBy);
     }
 
     [Fact]

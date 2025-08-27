@@ -52,7 +52,7 @@ public class ClientRepository : IClientRepository
         return existingClient;
     }
 
-    public async Task<bool> DeleteAsync(Guid clientId, string tenantId)
+    public async Task<bool> DeleteAsync(Guid clientId, string tenantId, string? deletedBy = null)
     {
         var client = await _context.Clients
             .FirstOrDefaultAsync(c => c.Id == clientId && c.TenantId == tenantId);
@@ -62,6 +62,7 @@ public class ClientRepository : IClientRepository
         
         client.IsDeleted = true;
         client.DeletedAt = DateTime.UtcNow;
+        client.DeletedBy = deletedBy;
         client.UpdatedAt = DateTime.UtcNow;
         
         await _context.SaveChangesAsync();

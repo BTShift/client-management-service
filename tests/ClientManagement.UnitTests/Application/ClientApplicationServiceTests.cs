@@ -184,17 +184,18 @@ public class ClientApplicationServiceTests
         // Arrange
         var clientId = Guid.NewGuid();
         var tenantId = "tenant-123";
+        var deletedBy = "user@example.com";
         
         _mockRepository
-            .Setup(x => x.DeleteAsync(clientId, tenantId))
+            .Setup(x => x.DeleteAsync(clientId, tenantId, deletedBy))
             .ReturnsAsync(true);
 
         // Act
-        var result = await _service.DeleteClientAsync(clientId, tenantId);
+        var result = await _service.DeleteClientAsync(clientId, tenantId, deletedBy);
 
         // Assert
         result.Should().BeTrue();
-        _mockRepository.Verify(x => x.DeleteAsync(clientId, tenantId), Times.Once);
+        _mockRepository.Verify(x => x.DeleteAsync(clientId, tenantId, deletedBy), Times.Once);
     }
 
     [Fact]
@@ -205,7 +206,7 @@ public class ClientApplicationServiceTests
         var tenantId = "tenant-123";
         
         _mockRepository
-            .Setup(x => x.DeleteAsync(clientId, tenantId))
+            .Setup(x => x.DeleteAsync(clientId, tenantId, null))
             .ReturnsAsync(false);
 
         // Act

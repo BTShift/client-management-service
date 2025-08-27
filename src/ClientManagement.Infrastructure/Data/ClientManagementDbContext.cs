@@ -69,12 +69,29 @@ public class ClientManagementDbContext : DbContext
             entity.Property(e => e.DeletedAt)
                 .HasColumnName("deleted_at");
             
+            entity.Property(e => e.DeletedBy)
+                .HasColumnName("deleted_by")
+                .HasMaxLength(100);
+            
+            // Indexes for better query performance
             entity.HasIndex(e => e.TenantId)
                 .HasDatabaseName("ix_clients_tenant_id");
             
             entity.HasIndex(e => new { e.TenantId, e.Email })
                 .HasDatabaseName("ix_clients_tenant_email")
                 .IsUnique();
+            
+            // Search performance indexes
+            entity.HasIndex(e => new { e.TenantId, e.Name })
+                .HasDatabaseName("ix_clients_tenant_name");
+            
+            entity.HasIndex(e => new { e.TenantId, e.IsDeleted })
+                .HasDatabaseName("ix_clients_tenant_deleted");
+            
+            // Audit index for tracking deletions
+            entity.HasIndex(e => new { e.TenantId, e.DeletedAt, e.DeletedBy })
+                .HasDatabaseName("ix_clients_tenant_deletion_audit")
+                .HasFilter("deleted_at IS NOT NULL");
             
             entity.HasQueryFilter(e => !e.IsDeleted);
         });

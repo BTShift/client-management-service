@@ -6,6 +6,7 @@ using Grpc.Core.Testing;
 using Microsoft.Extensions.Logging;
 using ClientManagement.Api.Services;
 using ClientManagement.Application.Services;
+using ClientManagement.Application.Interfaces;
 using ClientManagement.Contract;
 using ClientManagement.Domain.Entities;
 
@@ -15,13 +16,15 @@ public class ClientServiceTests
 {
     private readonly Mock<ILogger<ClientService>> _mockLogger;
     private readonly Mock<IClientApplicationService> _mockApplicationService;
+    private readonly Mock<IUserContext<ServerCallContext>> _mockUserContext;
     private readonly ClientService _service;
 
     public ClientServiceTests()
     {
         _mockLogger = new Mock<ILogger<ClientService>>();
         _mockApplicationService = new Mock<IClientApplicationService>();
-        _service = new ClientService(_mockLogger.Object, _mockApplicationService.Object);
+        _mockUserContext = new Mock<IUserContext<ServerCallContext>>();
+        _service = new ClientService(_mockLogger.Object, _mockApplicationService.Object, _mockUserContext.Object);
     }
     
     private static ServerCallContext CreateTestContext(string? tenantId = null)
@@ -244,9 +247,14 @@ public class ClientServiceTests
         // Arrange
         var clientId = Guid.NewGuid();
         var request = new DeleteClientRequest { ClientId = clientId.ToString() };
+        var deletedBy = "test-user@example.com";
+        
+        _mockUserContext
+            .Setup(x => x.GetUserIdentity(It.IsAny<ServerCallContext>()))
+            .Returns(deletedBy);
         
         _mockApplicationService
-            .Setup(x => x.DeleteClientAsync(clientId, "tenant-123"))
+            .Setup(x => x.DeleteClientAsync(clientId, "tenant-123", deletedBy))
             .ReturnsAsync(true);
 
         // Act
@@ -265,8 +273,12 @@ public class ClientServiceTests
         var clientId = Guid.NewGuid();
         var request = new DeleteClientRequest { ClientId = clientId.ToString() };
         
+        _mockUserContext
+            .Setup(x => x.GetUserIdentity(It.IsAny<ServerCallContext>()))
+            .Returns((string?)null);
+        
         _mockApplicationService
-            .Setup(x => x.DeleteClientAsync(clientId, "tenant-123"))
+            .Setup(x => x.DeleteClientAsync(clientId, "tenant-123", null))
             .ReturnsAsync(false);
 
         // Act
