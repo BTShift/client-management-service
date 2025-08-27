@@ -1,8 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
-using Shift.Messaging.Infrastructure;
-using MassTransit;
+using Shift.Messaging.Infrastructure.Extensions;
 
 namespace ClientManagement.Infrastructure.Services;
 
@@ -23,11 +22,7 @@ public static class InfrastructureServiceExtensions
         var rabbitMqHost = configuration["RabbitMQ:Host"] ?? Environment.GetEnvironmentVariable("RabbitMQ__Host");
         if (!string.IsNullOrEmpty(rabbitMqHost))
         {
-            services.AddShiftMessaging(configuration, consumers =>
-            {
-                // Register message consumers here
-                // Example: consumers.AddConsumer<TenantCreatedEventConsumer>();
-            });
+            services.AddShiftMessaging(configuration);
         }
 
         // Add other infrastructure services
