@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
-using Shift.Messaging.Infrastructure.Extensions;
+using ClientManagement.Application.Interfaces;
+using ClientManagement.Infrastructure.Repositories;
+using ClientManagement.Infrastructure.Data;
 
 namespace ClientManagement.Infrastructure.Services;
 
@@ -17,16 +19,14 @@ public static class InfrastructureServiceExtensions
                 options.UseNpgsql(connectionString));
         }
 
-        // Add Shift Messaging Infrastructure (RabbitMQ with MassTransit)
-        // Check if RabbitMQ is configured using the .NET configuration pattern
-        var rabbitMqHost = configuration["RabbitMQ:Host"] ?? Environment.GetEnvironmentVariable("RabbitMQ__Host");
-        if (!string.IsNullOrEmpty(rabbitMqHost))
-        {
-            services.AddShiftMessaging(configuration);
-        }
+        // Messaging infrastructure can be added here when needed
+        // Example: services.AddShiftMessaging(configuration);
 
-        // Add other infrastructure services
-        // Example: services.AddScoped<IClientRepository, ClientRepository>();
+        // Add repository services
+        services.AddScoped<IClientRepository, ClientRepository>();
+        
+        // Add user context service
+        services.AddScoped<IUserContext<Grpc.Core.ServerCallContext>, GrpcUserContext>();
 
         return services;
     }

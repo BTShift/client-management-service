@@ -6,8 +6,8 @@ public static class ApplicationServiceExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        // Add application services here
-        // Example: services.AddScoped<IClientService, ClientService>();
+        // Add application services
+        services.AddScoped<IClientApplicationService, ClientApplicationService>();
         
         return services;
     }
