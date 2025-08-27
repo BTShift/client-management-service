@@ -19,14 +19,14 @@ COPY ClientManagement.sln .
 # Copy NuGet configuration if it exists
 COPY NuGet.Config* ./
 
-# Restore dependencies
-RUN dotnet restore
+# Restore dependencies (only main projects, exclude test projects)
+RUN dotnet restore src/ClientManagement.Api/ClientManagement.Api.csproj --ignore-failed-sources
 
 # Copy the remaining source code
 COPY src/ src/
 
-# Build the application
-RUN dotnet build -c Release --no-restore
+# Build the application (only the API project)
+RUN dotnet build src/ClientManagement.Api/ClientManagement.Api.csproj -c Release --no-restore
 
 # Publish the application
 RUN dotnet publish src/ClientManagement.Api/ClientManagement.Api.csproj -c Release -o /app/publish --no-build
