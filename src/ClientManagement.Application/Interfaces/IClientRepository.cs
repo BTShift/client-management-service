@@ -14,4 +14,5 @@ public interface IClientRepository
         int pageSize = 20, 
         string? searchTerm = null);
     Task<bool> EmailExistsAsync(string email, string tenantId, Guid? excludeClientId = null);
+    Task<bool> CifExistsAsync(string cif, string tenantId, Guid? excludeClientId = null);
 }

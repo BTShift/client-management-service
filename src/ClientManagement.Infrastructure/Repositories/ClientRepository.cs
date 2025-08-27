@@ -41,6 +41,7 @@ public class ClientRepository : IClientRepository
             return null;
         
         existingClient.Name = client.Name;
+        existingClient.Cif = client.Cif;
         existingClient.Email = client.Email;
         existingClient.Phone = client.Phone;
         existingClient.Address = client.Address;
@@ -83,6 +84,7 @@ public class ClientRepository : IClientRepository
         {
             query = query.Where(c => 
                 c.Name.Contains(searchTerm) || 
+                c.Cif.Contains(searchTerm) ||
                 c.Email.Contains(searchTerm));
         }
         
@@ -101,6 +103,19 @@ public class ClientRepository : IClientRepository
     {
         var query = _context.Clients
             .Where(c => c.TenantId == tenantId && c.Email == email);
+        
+        if (excludeClientId.HasValue)
+        {
+            query = query.Where(c => c.Id != excludeClientId.Value);
+        }
+        
+        return await query.AnyAsync();
+    }
+    
+    public async Task<bool> CifExistsAsync(string cif, string tenantId, Guid? excludeClientId = null)
+    {
+        var query = _context.Clients
+            .Where(c => c.TenantId == tenantId && c.Cif == cif);
         
         if (excludeClientId.HasValue)
         {

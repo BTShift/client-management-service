@@ -22,17 +22,22 @@ public class ClientApplicationServiceTests
     }
 
     [Fact]
-    public async Task CreateClientAsync_ShouldCreateClient_WhenEmailIsUnique()
+    public async Task CreateClientAsync_ShouldCreateClient_WhenEmailAndCifAreUnique()
     {
         // Arrange
         var tenantId = "tenant-123";
         var name = "John Doe";
+        var cif = "CIF123456";
         var email = "john@example.com";
         var phone = "123-456-7890";
         var address = "123 Main St";
         
         _mockRepository
             .Setup(x => x.EmailExistsAsync(email, tenantId, null))
+            .ReturnsAsync(false);
+        
+        _mockRepository
+            .Setup(x => x.CifExistsAsync(cif, tenantId, null))
             .ReturnsAsync(false);
         
         _mockRepository
@@ -46,11 +51,12 @@ public class ClientApplicationServiceTests
             });
 
         // Act
-        var result = await _service.CreateClientAsync(tenantId, name, email, phone, address);
+        var result = await _service.CreateClientAsync(tenantId, name, cif, email, phone, address);
 
         // Assert
         result.Should().NotBeNull();
         result.Name.Should().Be(name);
+        result.Cif.Should().Be(cif);
         result.Email.Should().Be(email);
         result.Phone.Should().Be(phone);
         result.Address.Should().Be(address);
@@ -73,7 +79,33 @@ public class ClientApplicationServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.CreateClientAsync(tenantId, "Name", email, "", ""));
+            _service.CreateClientAsync(tenantId, "Name", "CIF123", email, "", ""));
+        
+        _mockRepository.Verify(x => x.CreateAsync(It.IsAny<Client>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateClientAsync_ShouldThrowException_WhenCifExists()
+    {
+        // Arrange
+        var tenantId = "tenant-123";
+        var cif = "EXISTING_CIF";
+        var email = "new@example.com";
+        
+        _mockRepository
+            .Setup(x => x.EmailExistsAsync(email, tenantId, null))
+            .ReturnsAsync(false);
+        
+        _mockRepository
+            .Setup(x => x.CifExistsAsync(cif, tenantId, null))
+            .ReturnsAsync(true);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.CreateClientAsync(tenantId, "Name", cif, email, "", ""));
+        
+        exception.Message.Should().Contain("CIF");
+        exception.Message.Should().Contain("already in use");
         
         _mockRepository.Verify(x => x.CreateAsync(It.IsAny<Client>()), Times.Never);
     }
@@ -123,7 +155,7 @@ public class ClientApplicationServiceTests
     }
 
     [Fact]
-    public async Task UpdateClientAsync_ShouldUpdateClient_WhenClientExistsAndEmailIsUnique()
+    public async Task UpdateClientAsync_ShouldUpdateClient_WhenClientExistsAndEmailCifAreUnique()
     {
         // Arrange
         var clientId = Guid.NewGuid();
@@ -133,6 +165,7 @@ public class ClientApplicationServiceTests
             Id = clientId,
             TenantId = tenantId,
             Name = "Updated Name",
+            Cif = "CIF789",
             Email = "updated@example.com",
             Status = ClientStatus.Inactive
         };
@@ -142,17 +175,22 @@ public class ClientApplicationServiceTests
             .ReturnsAsync(false);
         
         _mockRepository
+            .Setup(x => x.CifExistsAsync(updatedClient.Cif, tenantId, clientId))
+            .ReturnsAsync(false);
+        
+        _mockRepository
             .Setup(x => x.UpdateAsync(It.IsAny<Client>()))
             .ReturnsAsync(updatedClient);
 
         // Act
         var result = await _service.UpdateClientAsync(
-            clientId, tenantId, updatedClient.Name, updatedClient.Email,
+            clientId, tenantId, updatedClient.Name, updatedClient.Cif, updatedClient.Email,
             "", "", ClientStatus.Inactive);
 
         // Assert
         result.Should().NotBeNull();
         result.Name.Should().Be(updatedClient.Name);
+        result.Cif.Should().Be(updatedClient.Cif);
         result.Email.Should().Be(updatedClient.Email);
         result.Status.Should().Be(ClientStatus.Inactive);
         
@@ -173,7 +211,34 @@ public class ClientApplicationServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.UpdateClientAsync(clientId, tenantId, "Name", email, "", "", ClientStatus.Active));
+            _service.UpdateClientAsync(clientId, tenantId, "Name", "CIF456", email, "", "", ClientStatus.Active));
+        
+        _mockRepository.Verify(x => x.UpdateAsync(It.IsAny<Client>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateClientAsync_ShouldThrowException_WhenCifAlreadyExists()
+    {
+        // Arrange
+        var clientId = Guid.NewGuid();
+        var tenantId = "tenant-123";
+        var cif = "EXISTING_CIF";
+        var email = "unique@example.com";
+        
+        _mockRepository
+            .Setup(x => x.EmailExistsAsync(email, tenantId, clientId))
+            .ReturnsAsync(false);
+        
+        _mockRepository
+            .Setup(x => x.CifExistsAsync(cif, tenantId, clientId))
+            .ReturnsAsync(true);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.UpdateClientAsync(clientId, tenantId, "Name", cif, email, "", "", ClientStatus.Active));
+        
+        exception.Message.Should().Contain("CIF");
+        exception.Message.Should().Contain("already in use");
         
         _mockRepository.Verify(x => x.UpdateAsync(It.IsAny<Client>()), Times.Never);
     }

@@ -6,9 +6,9 @@ namespace ClientManagement.Application.Services;
 
 public interface IClientApplicationService
 {
-    Task<Client> CreateClientAsync(string tenantId, string name, string email, string phone, string address);
+    Task<Client> CreateClientAsync(string tenantId, string name, string cif, string email, string phone, string address);
     Task<Client?> GetClientAsync(Guid clientId, string tenantId);
-    Task<Client?> UpdateClientAsync(Guid clientId, string tenantId, string name, string email, string phone, string address, ClientStatus status);
+    Task<Client?> UpdateClientAsync(Guid clientId, string tenantId, string name, string cif, string email, string phone, string address, ClientStatus status);
     Task<bool> DeleteClientAsync(Guid clientId, string tenantId, string? deletedBy = null);
     Task<(IList<Client> Items, int TotalCount)> ListClientsAsync(string tenantId, int page, int pageSize, string? searchTerm = null);
 }
@@ -24,7 +24,7 @@ public class ClientApplicationService : IClientApplicationService
         _logger = logger;
     }
 
-    public async Task<Client> CreateClientAsync(string tenantId, string name, string email, string phone, string address)
+    public async Task<Client> CreateClientAsync(string tenantId, string name, string cif, string email, string phone, string address)
     {
         _logger.LogInformation("Creating new client for tenant {TenantId}: {Name}", tenantId, name);
         
@@ -36,10 +36,19 @@ public class ClientApplicationService : IClientApplicationService
             throw new InvalidOperationException($"Email '{email}' is already in use within this tenant.");
         }
         
+        // Validate CIF uniqueness within tenant
+        var cifExists = await _clientRepository.CifExistsAsync(cif, tenantId);
+        if (cifExists)
+        {
+            _logger.LogWarning("Cannot create client: CIF {Cif} already exists for tenant {TenantId}", cif, tenantId);
+            throw new InvalidOperationException($"CIF '{cif}' is already in use within this tenant.");
+        }
+        
         var client = new Client
         {
             TenantId = tenantId,
             Name = name,
+            Cif = cif,
             Email = email,
             Phone = phone,
             Address = address,
@@ -68,8 +77,8 @@ public class ClientApplicationService : IClientApplicationService
         return client;
     }
 
-    public async Task<Client?> UpdateClientAsync(Guid clientId, string tenantId, string name, string email, 
-        string phone, string address, ClientStatus status)
+    public async Task<Client?> UpdateClientAsync(Guid clientId, string tenantId, string name, string cif,
+        string email, string phone, string address, ClientStatus status)
     {
         _logger.LogInformation("Updating client {ClientId} for tenant {TenantId}", clientId, tenantId);
         
@@ -81,11 +90,20 @@ public class ClientApplicationService : IClientApplicationService
             throw new InvalidOperationException($"Email '{email}' is already in use within this tenant.");
         }
         
+        // Validate CIF uniqueness within tenant (excluding current client)
+        var cifExists = await _clientRepository.CifExistsAsync(cif, tenantId, clientId);
+        if (cifExists)
+        {
+            _logger.LogWarning("Cannot update client: CIF {Cif} already exists for tenant {TenantId}", cif, tenantId);
+            throw new InvalidOperationException($"CIF '{cif}' is already in use within this tenant.");
+        }
+        
         var client = new Client
         {
             Id = clientId,
             TenantId = tenantId,
             Name = name,
+            Cif = cif,
             Email = email,
             Phone = phone,
             Address = address,
