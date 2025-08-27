@@ -19,7 +19,8 @@ public static class InfrastructureServiceExtensions
         }
 
         // Add Shift Messaging Infrastructure (RabbitMQ with MassTransit)
-        var rabbitMqHost = Environment.GetEnvironmentVariable("RABBITMQ_HOST");
+        // Check if RabbitMQ is configured using the .NET configuration pattern
+        var rabbitMqHost = configuration["RabbitMQ:Host"] ?? Environment.GetEnvironmentVariable("RabbitMQ__Host");
         if (!string.IsNullOrEmpty(rabbitMqHost))
         {
             services.AddShiftMessaging(configuration, consumers =>

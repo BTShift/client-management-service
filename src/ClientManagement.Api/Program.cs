@@ -171,3 +171,9 @@ app.Run();
 
 // Make the implicit Program class public so it can be referenced by tests
 public partial class Program { }
+
+// WeatherForecast record for the sample endpoint
+public record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+{
+    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
