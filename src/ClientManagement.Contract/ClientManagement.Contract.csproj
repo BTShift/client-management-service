@@ -7,7 +7,7 @@
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IsPackable>true</IsPackable>
     <PackageId>BTShift.ClientManagement.Contract</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.2.0</Version>
     <Authors>BTShift</Authors>
     <Company>BTShift</Company>
     <Product>BTShift Platform</Product>
