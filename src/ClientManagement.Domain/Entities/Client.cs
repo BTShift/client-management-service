@@ -18,6 +18,7 @@ public class Client
     
     // Navigation properties
     public ICollection<ClientGroupMembership> ClientGroupMemberships { get; set; } = new List<ClientGroupMembership>();
+    public ICollection<UserClientAssociation> UserAssociations { get; set; } = new List<UserClientAssociation>();
 }
 
 public enum ClientStatus

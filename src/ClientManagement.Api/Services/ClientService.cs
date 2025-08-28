@@ -12,17 +12,20 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
     private readonly ILogger<ClientService> _logger;
     private readonly IClientApplicationService _clientApplicationService;
     private readonly IClientGroupApplicationService _clientGroupApplicationService;
+    private readonly IUserClientAssociationApplicationService _userClientAssociationService;
     private readonly IUserContext<ServerCallContext> _userContext;
 
     public ClientService(
         ILogger<ClientService> logger, 
         IClientApplicationService clientApplicationService,
         IClientGroupApplicationService clientGroupApplicationService,
+        IUserClientAssociationApplicationService userClientAssociationService,
         IUserContext<ServerCallContext> userContext)
     {
         _logger = logger;
         _clientApplicationService = clientApplicationService;
         _clientGroupApplicationService = clientGroupApplicationService;
+        _userClientAssociationService = userClientAssociationService;
         _userContext = userContext;
     }
 
@@ -574,5 +577,187 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
             UpdatedAt = group.UpdatedAt.ToString("O"),
             ClientCount = group.ClientGroupMemberships?.Count ?? 0
         };
+    }
+    
+    // User-Client Association Methods
+    
+    public override async Task<AssignUserToClientResponse> AssignUserToClient(AssignUserToClientRequest request, ServerCallContext context)
+    {
+        try
+        {
+            _logger.LogInformation("Assigning user {UserId} to client {ClientId}", request.UserId, request.ClientId);
+            
+            if (!Guid.TryParse(request.ClientId, out var clientId))
+            {
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid client ID format"));
+            }
+            
+            var tenantId = ExtractTenantId(request.TenantId, context);
+            var assignedBy = request.AssignedBy ?? _userContext.GetUserIdentity(context) ?? "system";
+            
+            var association = await _userClientAssociationService.AssignUserToClientAsync(
+                request.UserId,
+                clientId,
+                tenantId,
+                assignedBy
+            );
+            
+            return new AssignUserToClientResponse
+            {
+                Success = true,
+                Message = $"User {request.UserId} successfully assigned to client {request.ClientId}",
+                AssociationId = association.Id.ToString()
+            };
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation while assigning user to client");
+            throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error assigning user to client");
+            throw new RpcException(new Status(StatusCode.Internal, "An error occurred while assigning user to client"));
+        }
+    }
+    
+    public override async Task<RemoveUserFromClientResponse> RemoveUserFromClient(RemoveUserFromClientRequest request, ServerCallContext context)
+    {
+        try
+        {
+            _logger.LogInformation("Removing user {UserId} from client {ClientId}", request.UserId, request.ClientId);
+            
+            if (!Guid.TryParse(request.ClientId, out var clientId))
+            {
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid client ID format"));
+            }
+            
+            var tenantId = ExtractTenantId(request.TenantId, context);
+            
+            var success = await _userClientAssociationService.RemoveUserFromClientAsync(
+                request.UserId,
+                clientId,
+                tenantId
+            );
+            
+            if (!success)
+            {
+                throw new RpcException(new Status(StatusCode.NotFound, $"User {request.UserId} is not assigned to client {request.ClientId}"));
+            }
+            
+            return new RemoveUserFromClientResponse
+            {
+                Success = true,
+                Message = $"User {request.UserId} successfully removed from client {request.ClientId}"
+            };
+        }
+        catch (RpcException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing user from client");
+            throw new RpcException(new Status(StatusCode.Internal, "An error occurred while removing user from client"));
+        }
+    }
+    
+    public override async Task<GetClientUsersResponse> GetClientUsers(GetClientUsersRequest request, ServerCallContext context)
+    {
+        try
+        {
+            _logger.LogInformation("Getting users for client {ClientId}", request.ClientId);
+            
+            if (!Guid.TryParse(request.ClientId, out var clientId))
+            {
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid client ID format"));
+            }
+            
+            var tenantId = ExtractTenantId(request.TenantId, context);
+            var page = Math.Max(1, request.Page);
+            var pageSize = request.PageSize > 0 ? request.PageSize : 20;
+            
+            var (associations, totalCount) = await _userClientAssociationService.GetClientUsersAsync(
+                clientId,
+                tenantId,
+                page,
+                pageSize
+            );
+            
+            var response = new GetClientUsersResponse
+            {
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+            
+            foreach (var association in associations)
+            {
+                response.Users.Add(new UserInfo
+                {
+                    UserId = association.UserId,
+                    Email = "", // TODO: Fetch from Identity service
+                    FirstName = "", // TODO: Fetch from Identity service
+                    LastName = "", // TODO: Fetch from Identity service
+                    AssignedAt = association.AssignedAt.ToString("O"),
+                    AssignedBy = association.AssignedBy
+                });
+            }
+            
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting client users");
+            throw new RpcException(new Status(StatusCode.Internal, "An error occurred while getting client users"));
+        }
+    }
+    
+    public override async Task<GetUserClientsResponse> GetUserClients(GetUserClientsRequest request, ServerCallContext context)
+    {
+        try
+        {
+            _logger.LogInformation("Getting clients for user {UserId}", request.UserId);
+            
+            var tenantId = ExtractTenantId(request.TenantId, context);
+            var page = Math.Max(1, request.Page);
+            var pageSize = request.PageSize > 0 ? request.PageSize : 20;
+            
+            var (associations, totalCount) = await _userClientAssociationService.GetUserClientsAsync(
+                request.UserId,
+                tenantId,
+                page,
+                pageSize
+            );
+            
+            var response = new GetUserClientsResponse
+            {
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+            
+            foreach (var association in associations)
+            {
+                if (association.Client != null)
+                {
+                    response.Clients.Add(new ClientInfo
+                    {
+                        ClientId = association.Client.Id.ToString(),
+                        Name = association.Client.Name,
+                        Cif = association.Client.Cif,
+                        Email = association.Client.Email,
+                        Status = association.Client.Status.ToString()
+                    });
+                }
+            }
+            
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user clients");
+            throw new RpcException(new Status(StatusCode.Internal, "An error occurred while getting user clients"));
+        }
     }
 }

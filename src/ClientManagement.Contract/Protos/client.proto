@@ -104,6 +104,36 @@ service ClientManagement {
       get: "/api/clients/{client_id}/groups"
     };
   }
+  
+  // User-Client Association RPCs
+  
+  // Assign a user to a client
+  rpc AssignUserToClient (AssignUserToClientRequest) returns (AssignUserToClientResponse) {
+    option (google.api.http) = {
+      post: "/api/clients/{client_id}/users/{user_id}"
+    };
+  }
+  
+  // Remove a user from a client
+  rpc RemoveUserFromClient (RemoveUserFromClientRequest) returns (RemoveUserFromClientResponse) {
+    option (google.api.http) = {
+      delete: "/api/clients/{client_id}/users/{user_id}"
+    };
+  }
+  
+  // Get all users assigned to a client
+  rpc GetClientUsers (GetClientUsersRequest) returns (GetClientUsersResponse) {
+    option (google.api.http) = {
+      get: "/api/clients/{client_id}/users"
+    };
+  }
+  
+  // Get all clients assigned to a user
+  rpc GetUserClients (GetUserClientsRequest) returns (GetUserClientsResponse) {
+    option (google.api.http) = {
+      get: "/api/users/{user_id}/clients"
+    };
+  }
 }
 
 message ClientRequest {
@@ -264,4 +294,67 @@ message GetClientGroupsRequest {
 message GetClientGroupsResponse {
   repeated GroupInfo groups = 1;
   int32 total_count = 2;
+}
+
+// User-Client Association Messages
+
+message AssignUserToClientRequest {
+  string client_id = 1;
+  string user_id = 2;
+  string tenant_id = 3;
+  string assigned_by = 4; // User ID of the person making the assignment
+}
+
+message AssignUserToClientResponse {
+  bool success = 1;
+  string message = 2;
+  string association_id = 3;
+}
+
+message RemoveUserFromClientRequest {
+  string client_id = 1;
+  string user_id = 2;
+  string tenant_id = 3;
+}
+
+message RemoveUserFromClientResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetClientUsersRequest {
+  string client_id = 1;
+  string tenant_id = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetClientUsersResponse {
+  repeated UserInfo users = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetUserClientsRequest {
+  string user_id = 1;
+  string tenant_id = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetUserClientsResponse {
+  repeated ClientInfo clients = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message UserInfo {
+  string user_id = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string assigned_at = 5;
+  string assigned_by = 6;
 }

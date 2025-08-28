@@ -25,6 +25,7 @@ public static class InfrastructureServiceExtensions
         // Add repository services
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientGroupRepository, ClientGroupRepository>();
+        services.AddScoped<IUserClientAssociationRepository, UserClientAssociationRepository>();
         
         // Add user context service
         services.AddScoped<IUserContext<Grpc.Core.ServerCallContext>, GrpcUserContext>();

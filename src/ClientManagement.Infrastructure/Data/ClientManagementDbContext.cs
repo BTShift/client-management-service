@@ -13,6 +13,7 @@ public class ClientManagementDbContext : DbContext
     public DbSet<Client> Clients { get; set; }
     public DbSet<ClientGroup> ClientGroups { get; set; }
     public DbSet<ClientGroupMembership> ClientGroupMemberships { get; set; }
+    public DbSet<UserClientAssociation> UserClientAssociations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -200,6 +201,56 @@ public class ClientManagementDbContext : DbContext
             
             entity.HasIndex(e => e.GroupId)
                 .HasDatabaseName("ix_client_group_memberships_group_id");
+        });
+        
+        // UserClientAssociation configuration
+        modelBuilder.Entity<UserClientAssociation>(entity =>
+        {
+            entity.ToTable("user_client_associations");
+            
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .ValueGeneratedOnAdd();
+            
+            entity.Property(e => e.UserId)
+                .HasColumnName("user_id")
+                .IsRequired()
+                .HasMaxLength(100);
+            
+            entity.Property(e => e.ClientId)
+                .HasColumnName("client_id");
+            
+            entity.Property(e => e.TenantId)
+                .HasColumnName("tenant_id")
+                .IsRequired()
+                .HasMaxLength(100);
+            
+            entity.Property(e => e.AssignedAt)
+                .HasColumnName("assigned_at");
+            
+            entity.Property(e => e.AssignedBy)
+                .HasColumnName("assigned_by")
+                .IsRequired()
+                .HasMaxLength(100);
+            
+            // Relationships
+            entity.HasOne(e => e.Client)
+                .WithMany(c => c.UserAssociations)
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            // Indexes
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.ClientId })
+                .HasDatabaseName("ix_user_client_associations_unique")
+                .IsUnique();
+            
+            entity.HasIndex(e => new { e.TenantId, e.UserId })
+                .HasDatabaseName("ix_user_client_associations_user");
+            
+            entity.HasIndex(e => new { e.TenantId, e.ClientId })
+                .HasDatabaseName("ix_user_client_associations_client");
         });
     }
 }

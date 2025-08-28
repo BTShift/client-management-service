@@ -3,6 +3,7 @@ using System;
 using ClientManagement.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ClientManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(ClientManagementDbContext))]
-    partial class ClientManagementDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250828104042_AddUserClientAssociations")]
+    partial class AddUserClientAssociations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

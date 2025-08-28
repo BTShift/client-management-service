@@ -17,6 +17,7 @@ public class ClientServiceTests
     private readonly Mock<ILogger<ClientService>> _mockLogger;
     private readonly Mock<IClientApplicationService> _mockApplicationService;
     private readonly Mock<IClientGroupApplicationService> _mockGroupApplicationService;
+    private readonly Mock<IUserClientAssociationApplicationService> _mockUserClientAssociationService;
     private readonly Mock<IUserContext<ServerCallContext>> _mockUserContext;
     private readonly ClientService _service;
 
@@ -25,8 +26,14 @@ public class ClientServiceTests
         _mockLogger = new Mock<ILogger<ClientService>>();
         _mockApplicationService = new Mock<IClientApplicationService>();
         _mockGroupApplicationService = new Mock<IClientGroupApplicationService>();
+        _mockUserClientAssociationService = new Mock<IUserClientAssociationApplicationService>();
         _mockUserContext = new Mock<IUserContext<ServerCallContext>>();
-        _service = new ClientService(_mockLogger.Object, _mockApplicationService.Object, _mockGroupApplicationService.Object, _mockUserContext.Object);
+        _service = new ClientService(
+            _mockLogger.Object, 
+            _mockApplicationService.Object, 
+            _mockGroupApplicationService.Object, 
+            _mockUserClientAssociationService.Object,
+            _mockUserContext.Object);
     }
     
     private static ServerCallContext CreateTestContext(string? tenantId = null)
