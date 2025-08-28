@@ -1,87 +1,127 @@
 using Grpc.Core;
+using Microsoft.AspNetCore.Http;
 using ClientManagement.Application.Interfaces;
 
 namespace ClientManagement.Infrastructure.Services;
 
 /// <summary>
-/// Implementation of IUserContext for gRPC services
+/// Implementation of IUserContext for gRPC services that extracts user information from the call context
 /// </summary>
-public class GrpcUserContext : IUserContext<ServerCallContext>
+public class GrpcUserContext : IUserContext
 {
-    public string? GetUserIdentity(ServerCallContext context)
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    
+    public GrpcUserContext(IHttpContextAccessor httpContextAccessor)
     {
-        // Try to get user ID from headers
-        var userId = context.RequestHeaders.GetValue("x-user-id");
-        if (!string.IsNullOrEmpty(userId))
+        _httpContextAccessor = httpContextAccessor;
+    }
+    
+    public string GetCurrentUserId()
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext == null)
+            return "System";
+            
+        // Try to get from headers
+        if (httpContext.Request.Headers.TryGetValue("x-user-id", out var userId) && !string.IsNullOrEmpty(userId))
         {
-            return userId;
+            return userId.ToString();
         }
         
-        // Try to get user email from headers
-        var userEmail = context.RequestHeaders.GetValue("x-user-email");
-        if (!string.IsNullOrEmpty(userEmail))
-        {
-            return userEmail;
-        }
-        
-        // Try to get from authorization context if using JWT
-        var httpContext = context.GetHttpContext();
-        var user = httpContext?.User;
+        // Try to get from claims
+        var user = httpContext.User;
         if (user?.Identity?.IsAuthenticated == true)
         {
-            // Try to get user ID from claims
             var userIdClaim = user.FindFirst("sub") ?? user.FindFirst("user_id");
             if (userIdClaim != null)
             {
                 return userIdClaim.Value;
             }
+        }
+        
+        // For development
+        if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+        {
+            return "dev-user";
+        }
+        
+        return "System";
+    }
+    
+    public string GetCurrentUserName()
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext == null)
+            return "System";
             
-            // Fall back to email or name
+        // Try to get from headers
+        if (httpContext.Request.Headers.TryGetValue("x-user-email", out var userEmail) && !string.IsNullOrEmpty(userEmail))
+        {
+            return userEmail.ToString();
+        }
+        
+        // Try to get from claims
+        var user = httpContext.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            // Try email claim
             var emailClaim = user.FindFirst("email") ?? user.FindFirst("preferred_username");
             if (emailClaim != null)
             {
                 return emailClaim.Value;
             }
             
-            return user.Identity.Name;
+            // Fall back to name
+            if (!string.IsNullOrEmpty(user.Identity.Name))
+            {
+                return user.Identity.Name;
+            }
         }
         
-        // For development/testing, return a default user
+        // For development
         if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
         {
             return "dev-user";
         }
         
-        return null; // Unknown user
+        return "System";
     }
     
-    public string? GetTenantId(ServerCallContext context)
+    public string GetCurrentTenantId()
     {
-        // Try to get from metadata/headers
-        var tenantIdEntry = context.RequestHeaders.GetValue("x-tenant-id");
-        if (!string.IsNullOrEmpty(tenantIdEntry))
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext == null)
+            return "default-tenant";
+            
+        // Try to get from headers
+        if (httpContext.Request.Headers.TryGetValue("x-tenant-id", out var tenantId) && !string.IsNullOrEmpty(tenantId))
         {
-            return tenantIdEntry;
+            return tenantId.ToString();
         }
         
-        // Try to get from HTTP context if available
-        var httpContext = context.GetHttpContext();
-        if (httpContext?.User != null)
+        // Try to get from claims
+        var user = httpContext.User;
+        if (user != null)
         {
-            var tenantClaim = httpContext.User.FindFirst("tenant_id") 
-                           ?? httpContext.User.FindFirst("tenantId");
+            var tenantClaim = user.FindFirst("tenant_id") ?? user.FindFirst("tenantId");
             if (tenantClaim != null)
             {
                 return tenantClaim.Value;
             }
         }
         
-        // For development/testing, use a default tenant
+        // For development
         if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
         {
             return "default-tenant";
         }
         
-        return null;
+        return "default-tenant";
+    }
+    
+    public bool IsAuthenticated()
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        return httpContext?.User?.Identity?.IsAuthenticated ?? false;
     }
 }

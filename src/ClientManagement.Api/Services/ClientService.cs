@@ -12,17 +12,20 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
     private readonly ILogger<ClientService> _logger;
     private readonly IClientApplicationService _clientApplicationService;
     private readonly IClientGroupApplicationService _clientGroupApplicationService;
-    private readonly IUserContext<ServerCallContext> _userContext;
+    private readonly IUserClientAssociationApplicationService _userClientAssociationService;
+    private readonly IUserContext _userContext;
 
     public ClientService(
         ILogger<ClientService> logger, 
         IClientApplicationService clientApplicationService,
         IClientGroupApplicationService clientGroupApplicationService,
-        IUserContext<ServerCallContext> userContext)
+        IUserClientAssociationApplicationService userClientAssociationService,
+        IUserContext userContext)
     {
         _logger = logger;
         _clientApplicationService = clientApplicationService;
         _clientGroupApplicationService = clientGroupApplicationService;
+        _userClientAssociationService = userClientAssociationService;
         _userContext = userContext;
     }
 
@@ -30,18 +33,25 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
     {
         try
         {
-            _logger.LogInformation("Creating client for tenant {TenantId}: {Name}", request.TenantId, request.Name);
+            _logger.LogInformation("Creating client for tenant {TenantId}: {CompanyName}", request.TenantId, request.CompanyName);
             
             // Extract tenant ID from request or context
             var tenantId = ExtractTenantId(request.TenantId, context);
             
             var client = await _clientApplicationService.CreateClientAsync(
                 tenantId,
-                request.Name,
-                request.Cif,
-                request.Email,
-                request.Phone ?? string.Empty,
-                request.Address ?? string.Empty
+                request.CompanyName,
+                request.Country ?? string.Empty,
+                request.Address ?? string.Empty,
+                request.IceNumber ?? string.Empty,
+                request.RcNumber ?? string.Empty,
+                request.VatNumber ?? string.Empty,
+                request.CnssNumber ?? string.Empty,
+                request.Industry ?? string.Empty,
+                request.AdminContactPerson ?? string.Empty,
+                request.BillingContactPerson ?? string.Empty,
+                request.FiscalYearEnd ?? string.Empty,
+                request.AssignedTeamId ?? string.Empty
             );
             
             return MapToClientResponse(client);
@@ -115,12 +125,19 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
             var client = await _clientApplicationService.UpdateClientAsync(
                 clientId,
                 tenantId,
-                request.Name,
-                request.Cif,
-                request.Email,
-                request.Phone ?? string.Empty,
+                request.CompanyName,
+                request.Country ?? string.Empty,
                 request.Address ?? string.Empty,
-                status
+                request.IceNumber ?? string.Empty,
+                request.RcNumber ?? string.Empty,
+                request.VatNumber ?? string.Empty,
+                request.CnssNumber ?? string.Empty,
+                request.Industry ?? string.Empty,
+                request.AdminContactPerson ?? string.Empty,
+                request.BillingContactPerson ?? string.Empty,
+                status,
+                request.FiscalYearEnd ?? string.Empty,
+                request.AssignedTeamId ?? string.Empty
             );
             
             if (client == null)
@@ -159,7 +176,7 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
             
             // Extract tenant ID and user information from context
             var tenantId = ExtractTenantId(null, context);
-            var deletedBy = _userContext.GetUserIdentity(context);
+            var deletedBy = _userContext.GetCurrentUserName();
             
             var result = await _clientApplicationService.DeleteClientAsync(clientId, tenantId, deletedBy);
             
@@ -207,9 +224,12 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
                 response.Clients.Add(new ClientInfo
                 {
                     ClientId = client.Id.ToString(),
-                    Name = client.Name,
-                    Cif = client.Cif,
-                    Email = client.Email,
+                    CompanyName = client.CompanyName,
+                    IceNumber = client.IceNumber ?? string.Empty,
+                    RcNumber = client.RcNumber ?? string.Empty,
+                    VatNumber = client.VatNumber ?? string.Empty,
+                    CnssNumber = client.CnssNumber ?? string.Empty,
+                    Industry = client.Industry ?? string.Empty,
                     Status = client.Status.ToString()
                 });
             }
@@ -228,13 +248,20 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
         return new ClientResponse
         {
             ClientId = client.Id.ToString(),
-            Name = client.Name,
-            Cif = client.Cif,
-            Email = client.Email,
-            Phone = client.Phone,
-            Address = client.Address,
+            CompanyName = client.CompanyName,
+            Country = client.Country ?? string.Empty,
+            Address = client.Address ?? string.Empty,
+            IceNumber = client.IceNumber ?? string.Empty,
+            RcNumber = client.RcNumber ?? string.Empty,
+            VatNumber = client.VatNumber ?? string.Empty,
+            CnssNumber = client.CnssNumber ?? string.Empty,
+            Industry = client.Industry ?? string.Empty,
+            AdminContactPerson = client.AdminContactPerson ?? string.Empty,
+            BillingContactPerson = client.BillingContactPerson ?? string.Empty,
             Status = client.Status.ToString(),
             TenantId = client.TenantId,
+            FiscalYearEnd = client.FiscalYearEnd?.ToString("yyyy-MM-dd") ?? string.Empty,
+            AssignedTeamId = client.AssignedTeamId?.ToString() ?? string.Empty,
             CreatedAt = client.CreatedAt.ToString("O"),
             UpdatedAt = client.UpdatedAt.ToString("O")
         };
@@ -349,7 +376,7 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
             }
             
             var tenantId = ExtractTenantId(null, context);
-            var userIdentity = _userContext.GetUserIdentity(context);
+            var userIdentity = _userContext.GetCurrentUserName();
             
             var result = await _clientGroupApplicationService.DeleteGroupAsync(groupId, tenantId, userIdentity);
             
@@ -427,7 +454,7 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
             }
             
             var tenantId = ExtractTenantId(null, context);
-            var userIdentity = _userContext.GetUserIdentity(context);
+            var userIdentity = _userContext.GetCurrentUserName();
             
             var result = await _clientGroupApplicationService.AddClientToGroupAsync(
                 clientId,
@@ -507,8 +534,12 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
                 response.Clients.Add(new ClientInfo
                 {
                     ClientId = client.Id.ToString(),
-                    Name = client.Name,
-                    Email = client.Email,
+                    CompanyName = client.CompanyName,
+                    IceNumber = client.IceNumber ?? string.Empty,
+                    RcNumber = client.RcNumber ?? string.Empty,
+                    VatNumber = client.VatNumber ?? string.Empty,
+                    CnssNumber = client.CnssNumber ?? string.Empty,
+                    Industry = client.Industry ?? string.Empty,
                     Status = client.Status.ToString()
                 });
             }
@@ -574,5 +605,190 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
             UpdatedAt = group.UpdatedAt.ToString("O"),
             ClientCount = group.ClientGroupMemberships?.Count ?? 0
         };
+    }
+    
+    // User-Client Association Methods
+    
+    public override async Task<AssignUserToClientResponse> AssignUserToClient(AssignUserToClientRequest request, ServerCallContext context)
+    {
+        try
+        {
+            _logger.LogInformation("Assigning user {UserId} to client {ClientId}", request.UserId, request.ClientId);
+            
+            if (!Guid.TryParse(request.ClientId, out var clientId))
+            {
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid client ID format"));
+            }
+            
+            var tenantId = ExtractTenantId(request.TenantId, context);
+            var assignedBy = request.AssignedBy ?? _userContext.GetCurrentUserName() ?? "system";
+            
+            var association = await _userClientAssociationService.AssignUserToClientAsync(
+                request.UserId,
+                clientId,
+                tenantId,
+                assignedBy
+            );
+            
+            return new AssignUserToClientResponse
+            {
+                Success = true,
+                Message = $"User {request.UserId} successfully assigned to client {request.ClientId}",
+                AssociationId = association.Id.ToString()
+            };
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation while assigning user to client");
+            throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error assigning user to client");
+            throw new RpcException(new Status(StatusCode.Internal, "An error occurred while assigning user to client"));
+        }
+    }
+    
+    public override async Task<RemoveUserFromClientResponse> RemoveUserFromClient(RemoveUserFromClientRequest request, ServerCallContext context)
+    {
+        try
+        {
+            _logger.LogInformation("Removing user {UserId} from client {ClientId}", request.UserId, request.ClientId);
+            
+            if (!Guid.TryParse(request.ClientId, out var clientId))
+            {
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid client ID format"));
+            }
+            
+            var tenantId = ExtractTenantId(request.TenantId, context);
+            
+            var success = await _userClientAssociationService.RemoveUserFromClientAsync(
+                request.UserId,
+                clientId,
+                tenantId
+            );
+            
+            if (!success)
+            {
+                throw new RpcException(new Status(StatusCode.NotFound, $"User {request.UserId} is not assigned to client {request.ClientId}"));
+            }
+            
+            return new RemoveUserFromClientResponse
+            {
+                Success = true,
+                Message = $"User {request.UserId} successfully removed from client {request.ClientId}"
+            };
+        }
+        catch (RpcException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing user from client");
+            throw new RpcException(new Status(StatusCode.Internal, "An error occurred while removing user from client"));
+        }
+    }
+    
+    public override async Task<GetClientUsersResponse> GetClientUsers(GetClientUsersRequest request, ServerCallContext context)
+    {
+        try
+        {
+            _logger.LogInformation("Getting users for client {ClientId}", request.ClientId);
+            
+            if (!Guid.TryParse(request.ClientId, out var clientId))
+            {
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid client ID format"));
+            }
+            
+            var tenantId = ExtractTenantId(request.TenantId, context);
+            var page = Math.Max(1, request.Page);
+            var pageSize = request.PageSize > 0 ? request.PageSize : 20;
+            
+            var (associations, totalCount) = await _userClientAssociationService.GetClientUsersAsync(
+                clientId,
+                tenantId,
+                page,
+                pageSize
+            );
+            
+            var response = new GetClientUsersResponse
+            {
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+            
+            foreach (var association in associations)
+            {
+                response.Users.Add(new UserInfo
+                {
+                    UserId = association.UserId,
+                    Email = "", // TODO: Fetch from Identity service
+                    FirstName = "", // TODO: Fetch from Identity service
+                    LastName = "", // TODO: Fetch from Identity service
+                    AssignedAt = association.AssignedAt.ToString("O"),
+                    AssignedBy = association.AssignedBy
+                });
+            }
+            
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting client users");
+            throw new RpcException(new Status(StatusCode.Internal, "An error occurred while getting client users"));
+        }
+    }
+    
+    public override async Task<GetUserClientsResponse> GetUserClients(GetUserClientsRequest request, ServerCallContext context)
+    {
+        try
+        {
+            _logger.LogInformation("Getting clients for user {UserId}", request.UserId);
+            
+            var tenantId = ExtractTenantId(request.TenantId, context);
+            var page = Math.Max(1, request.Page);
+            var pageSize = request.PageSize > 0 ? request.PageSize : 20;
+            
+            var (associations, totalCount) = await _userClientAssociationService.GetUserClientsAsync(
+                request.UserId,
+                tenantId,
+                page,
+                pageSize
+            );
+            
+            var response = new GetUserClientsResponse
+            {
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+            
+            foreach (var association in associations)
+            {
+                if (association.Client != null)
+                {
+                    response.Clients.Add(new ClientInfo
+                    {
+                        ClientId = association.Client.Id.ToString(),
+                        CompanyName = association.Client.CompanyName,
+                        IceNumber = association.Client.IceNumber ?? string.Empty,
+                        RcNumber = association.Client.RcNumber ?? string.Empty,
+                        VatNumber = association.Client.VatNumber ?? string.Empty,
+                        CnssNumber = association.Client.CnssNumber ?? string.Empty,
+                        Industry = association.Client.Industry ?? string.Empty,
+                        Status = association.Client.Status.ToString()
+                    });
+                }
+            }
+            
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user clients");
+            throw new RpcException(new Status(StatusCode.Internal, "An error occurred while getting user clients"));
+        }
     }
 }

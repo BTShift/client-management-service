@@ -9,6 +9,7 @@ public static class ApplicationServiceExtensions
         // Add application services
         services.AddScoped<IClientApplicationService, ClientApplicationService>();
         services.AddScoped<IClientGroupApplicationService, ClientGroupApplicationService>();
+        services.AddScoped<IUserClientAssociationApplicationService, UserClientAssociationApplicationService>();
         
         return services;
     }

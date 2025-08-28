@@ -8,9 +8,15 @@ namespace ClientManagement.Application.Services;
 
 public interface IClientApplicationService
 {
-    Task<Client> CreateClientAsync(string tenantId, string name, string cif, string email, string phone, string address);
+    Task<Client> CreateClientAsync(string tenantId, string companyName, string country, string address, 
+        string iceNumber, string rcNumber, string vatNumber, string cnssNumber, 
+        string industry, string adminContactPerson, string billingContactPerson, 
+        string fiscalYearEnd, string assignedTeamId);
     Task<Client?> GetClientAsync(Guid clientId, string tenantId);
-    Task<Client?> UpdateClientAsync(Guid clientId, string tenantId, string name, string cif, string email, string phone, string address, ClientStatus status);
+    Task<Client?> UpdateClientAsync(Guid clientId, string tenantId, string companyName, string country, 
+        string address, string iceNumber, string rcNumber, string vatNumber, string cnssNumber, 
+        string industry, string adminContactPerson, string billingContactPerson, 
+        ClientStatus status, string fiscalYearEnd, string assignedTeamId);
     Task<bool> DeleteClientAsync(Guid clientId, string tenantId, string? deletedBy = null);
     Task<(IList<Client> Items, int TotalCount)> ListClientsAsync(string tenantId, int page, int pageSize, string? searchTerm = null);
 }
@@ -20,46 +26,65 @@ public class ClientApplicationService : IClientApplicationService
     private readonly IClientRepository _clientRepository;
     private readonly ILogger<ClientApplicationService> _logger;
     private readonly IPublishEndpoint _publishEndpoint;
+    private readonly IUserContext _userContext;
 
     public ClientApplicationService(
         IClientRepository clientRepository, 
         ILogger<ClientApplicationService> logger,
-        IPublishEndpoint publishEndpoint)
+        IPublishEndpoint publishEndpoint,
+        IUserContext userContext)
     {
         _clientRepository = clientRepository;
         _logger = logger;
         _publishEndpoint = publishEndpoint;
+        _userContext = userContext;
     }
 
-    public async Task<Client> CreateClientAsync(string tenantId, string name, string cif, string email, string phone, string address)
+    public async Task<Client> CreateClientAsync(string tenantId, string companyName, string country, string address, 
+        string iceNumber, string rcNumber, string vatNumber, string cnssNumber, 
+        string industry, string adminContactPerson, string billingContactPerson, 
+        string fiscalYearEnd, string assignedTeamId)
     {
-        _logger.LogInformation("Creating new client for tenant {TenantId}: {Name}", tenantId, name);
+        _logger.LogInformation("Creating new client for tenant {TenantId}: {CompanyName}", tenantId, companyName);
         
-        // Validate email uniqueness within tenant
-        var emailExists = await _clientRepository.EmailExistsAsync(email, tenantId);
-        if (emailExists)
+        // Validate ICE number uniqueness within tenant if provided
+        if (!string.IsNullOrWhiteSpace(iceNumber))
         {
-            _logger.LogWarning("Cannot create client: Email {Email} already exists for tenant {TenantId}", email, tenantId);
-            throw new InvalidOperationException($"Email '{email}' is already in use within this tenant.");
+            var iceExists = await _clientRepository.IceNumberExistsAsync(iceNumber, tenantId);
+            if (iceExists)
+            {
+                _logger.LogWarning("Cannot create client: ICE number {IceNumber} already exists for tenant {TenantId}", iceNumber, tenantId);
+                throw new InvalidOperationException($"ICE number '{iceNumber}' is already in use within this tenant.");
+            }
         }
         
-        // Validate CIF uniqueness within tenant
-        var cifExists = await _clientRepository.CifExistsAsync(cif, tenantId);
-        if (cifExists)
+        // Validate RC number uniqueness within tenant if provided
+        if (!string.IsNullOrWhiteSpace(rcNumber))
         {
-            _logger.LogWarning("Cannot create client: CIF {Cif} already exists for tenant {TenantId}", cif, tenantId);
-            throw new InvalidOperationException($"CIF '{cif}' is already in use within this tenant.");
+            var rcExists = await _clientRepository.RcNumberExistsAsync(rcNumber, tenantId);
+            if (rcExists)
+            {
+                _logger.LogWarning("Cannot create client: RC number {RcNumber} already exists for tenant {TenantId}", rcNumber, tenantId);
+                throw new InvalidOperationException($"RC number '{rcNumber}' is already in use within this tenant.");
+            }
         }
         
         var client = new Client
         {
             TenantId = tenantId,
-            Name = name,
-            Cif = cif,
-            Email = email,
-            Phone = phone,
-            Address = address,
-            Status = ClientStatus.Active
+            CompanyName = companyName,
+            Country = string.IsNullOrWhiteSpace(country) ? null : country,
+            Address = string.IsNullOrWhiteSpace(address) ? null : address,
+            IceNumber = string.IsNullOrWhiteSpace(iceNumber) ? null : iceNumber,
+            RcNumber = string.IsNullOrWhiteSpace(rcNumber) ? null : rcNumber,
+            VatNumber = string.IsNullOrWhiteSpace(vatNumber) ? null : vatNumber,
+            CnssNumber = string.IsNullOrWhiteSpace(cnssNumber) ? null : cnssNumber,
+            Industry = string.IsNullOrWhiteSpace(industry) ? null : industry,
+            AdminContactPerson = string.IsNullOrWhiteSpace(adminContactPerson) ? null : adminContactPerson,
+            BillingContactPerson = string.IsNullOrWhiteSpace(billingContactPerson) ? null : billingContactPerson,
+            Status = ClientStatus.Active,
+            FiscalYearEnd = string.IsNullOrWhiteSpace(fiscalYearEnd) ? null : DateTime.Parse(fiscalYearEnd),
+            AssignedTeamId = string.IsNullOrWhiteSpace(assignedTeamId) ? null : Guid.Parse(assignedTeamId)
         };
         
         var createdClient = await _clientRepository.CreateAsync(client);
@@ -75,14 +100,21 @@ public class ClientApplicationService : IClientApplicationService
             Timestamp = DateTime.UtcNow,
             ClientId = createdClient.Id.ToString(),
             TenantId = tenantId,
-            Name = createdClient.Name,
-            Cif = createdClient.Cif,
-            Email = createdClient.Email,
-            Phone = createdClient.Phone,
+            CompanyName = createdClient.CompanyName,
+            Country = createdClient.Country,
             Address = createdClient.Address,
+            IceNumber = createdClient.IceNumber,
+            RcNumber = createdClient.RcNumber,
+            VatNumber = createdClient.VatNumber,
+            CnssNumber = createdClient.CnssNumber,
+            Industry = createdClient.Industry,
+            AdminContactPerson = createdClient.AdminContactPerson,
+            BillingContactPerson = createdClient.BillingContactPerson,
             Status = createdClient.Status.ToString(),
+            FiscalYearEnd = createdClient.FiscalYearEnd,
+            AssignedTeamId = createdClient.AssignedTeamId?.ToString(),
             CreatedAt = createdClient.CreatedAt,
-            CreatedBy = "System" // TODO: Get from IUserContext when implemented
+            CreatedBy = _userContext.IsAuthenticated() ? _userContext.GetCurrentUserName() : "System"
         });
         
         _logger.LogInformation("Published ClientCreatedEvent for client {ClientId} with correlation ID {CorrelationId}", 
@@ -105,37 +137,52 @@ public class ClientApplicationService : IClientApplicationService
         return client;
     }
 
-    public async Task<Client?> UpdateClientAsync(Guid clientId, string tenantId, string name, string cif,
-        string email, string phone, string address, ClientStatus status)
+    public async Task<Client?> UpdateClientAsync(Guid clientId, string tenantId, string companyName, string country, 
+        string address, string iceNumber, string rcNumber, string vatNumber, string cnssNumber, 
+        string industry, string adminContactPerson, string billingContactPerson, 
+        ClientStatus status, string fiscalYearEnd, string assignedTeamId)
     {
         _logger.LogInformation("Updating client {ClientId} for tenant {TenantId}", clientId, tenantId);
         
-        // Validate email uniqueness within tenant (excluding current client)
-        var emailExists = await _clientRepository.EmailExistsAsync(email, tenantId, clientId);
-        if (emailExists)
+        // Validate ICE number uniqueness within tenant (excluding current client) if provided
+        if (!string.IsNullOrWhiteSpace(iceNumber))
         {
-            _logger.LogWarning("Cannot update client: Email {Email} already exists for tenant {TenantId}", email, tenantId);
-            throw new InvalidOperationException($"Email '{email}' is already in use within this tenant.");
+            var iceExists = await _clientRepository.IceNumberExistsAsync(iceNumber, tenantId, clientId);
+            if (iceExists)
+            {
+                _logger.LogWarning("Cannot update client: ICE number {IceNumber} already exists for tenant {TenantId}", iceNumber, tenantId);
+                throw new InvalidOperationException($"ICE number '{iceNumber}' is already in use within this tenant.");
+            }
         }
         
-        // Validate CIF uniqueness within tenant (excluding current client)
-        var cifExists = await _clientRepository.CifExistsAsync(cif, tenantId, clientId);
-        if (cifExists)
+        // Validate RC number uniqueness within tenant (excluding current client) if provided
+        if (!string.IsNullOrWhiteSpace(rcNumber))
         {
-            _logger.LogWarning("Cannot update client: CIF {Cif} already exists for tenant {TenantId}", cif, tenantId);
-            throw new InvalidOperationException($"CIF '{cif}' is already in use within this tenant.");
+            var rcExists = await _clientRepository.RcNumberExistsAsync(rcNumber, tenantId, clientId);
+            if (rcExists)
+            {
+                _logger.LogWarning("Cannot update client: RC number {RcNumber} already exists for tenant {TenantId}", rcNumber, tenantId);
+                throw new InvalidOperationException($"RC number '{rcNumber}' is already in use within this tenant.");
+            }
         }
         
         var client = new Client
         {
             Id = clientId,
             TenantId = tenantId,
-            Name = name,
-            Cif = cif,
-            Email = email,
-            Phone = phone,
-            Address = address,
-            Status = status
+            CompanyName = companyName,
+            Country = string.IsNullOrWhiteSpace(country) ? null : country,
+            Address = string.IsNullOrWhiteSpace(address) ? null : address,
+            IceNumber = string.IsNullOrWhiteSpace(iceNumber) ? null : iceNumber,
+            RcNumber = string.IsNullOrWhiteSpace(rcNumber) ? null : rcNumber,
+            VatNumber = string.IsNullOrWhiteSpace(vatNumber) ? null : vatNumber,
+            CnssNumber = string.IsNullOrWhiteSpace(cnssNumber) ? null : cnssNumber,
+            Industry = string.IsNullOrWhiteSpace(industry) ? null : industry,
+            AdminContactPerson = string.IsNullOrWhiteSpace(adminContactPerson) ? null : adminContactPerson,
+            BillingContactPerson = string.IsNullOrWhiteSpace(billingContactPerson) ? null : billingContactPerson,
+            Status = status,
+            FiscalYearEnd = string.IsNullOrWhiteSpace(fiscalYearEnd) ? null : DateTime.Parse(fiscalYearEnd),
+            AssignedTeamId = string.IsNullOrWhiteSpace(assignedTeamId) ? null : Guid.Parse(assignedTeamId)
         };
         
         var updatedClient = await _clientRepository.UpdateAsync(client);
@@ -156,14 +203,21 @@ public class ClientApplicationService : IClientApplicationService
                 Timestamp = DateTime.UtcNow,
                 ClientId = updatedClient.Id.ToString(),
                 TenantId = tenantId,
-                Name = updatedClient.Name,
-                Cif = updatedClient.Cif,
-                Email = updatedClient.Email,
-                Phone = updatedClient.Phone,
+                CompanyName = updatedClient.CompanyName,
+                Country = updatedClient.Country,
                 Address = updatedClient.Address,
+                IceNumber = updatedClient.IceNumber,
+                RcNumber = updatedClient.RcNumber,
+                VatNumber = updatedClient.VatNumber,
+                CnssNumber = updatedClient.CnssNumber,
+                Industry = updatedClient.Industry,
+                AdminContactPerson = updatedClient.AdminContactPerson,
+                BillingContactPerson = updatedClient.BillingContactPerson,
                 Status = updatedClient.Status.ToString(),
+                FiscalYearEnd = updatedClient.FiscalYearEnd,
+                AssignedTeamId = updatedClient.AssignedTeamId?.ToString(),
                 UpdatedAt = updatedClient.UpdatedAt,
-                UpdatedBy = "System" // TODO: Get from IUserContext when implemented
+                UpdatedBy = _userContext.IsAuthenticated() ? _userContext.GetCurrentUserName() : "System"
             });
             
             _logger.LogInformation("Published ClientUpdatedEvent for client {ClientId} with correlation ID {CorrelationId}", 
@@ -175,17 +229,18 @@ public class ClientApplicationService : IClientApplicationService
 
     public async Task<bool> DeleteClientAsync(Guid clientId, string tenantId, string? deletedBy = null)
     {
+        var actualDeletedBy = deletedBy ?? (_userContext.IsAuthenticated() ? _userContext.GetCurrentUserName() : "System");
         _logger.LogInformation("Soft deleting client {ClientId} for tenant {TenantId} by user {DeletedBy}", 
-            clientId, tenantId, deletedBy ?? "Unknown");
+            clientId, tenantId, actualDeletedBy);
         
-        var result = await _clientRepository.DeleteAsync(clientId, tenantId, deletedBy);
+        var result = await _clientRepository.DeleteAsync(clientId, tenantId, actualDeletedBy);
         
         if (result)
         {
             // Enhanced audit logging for soft delete operations
             _logger.LogInformation(
                 "AUDIT: Client soft delete successful - ClientId: {ClientId}, TenantId: {TenantId}, DeletedBy: {DeletedBy}, Timestamp: {Timestamp}",
-                clientId, tenantId, deletedBy ?? "Unknown", DateTime.UtcNow);
+                clientId, tenantId, actualDeletedBy, DateTime.UtcNow);
             
             // Publish ClientDeletedEvent
             var correlationId = Guid.NewGuid();
@@ -196,7 +251,7 @@ public class ClientApplicationService : IClientApplicationService
                 ClientId = clientId.ToString(),
                 TenantId = tenantId,
                 DeletedAt = DateTime.UtcNow,
-                DeletedBy = deletedBy ?? "System"
+                DeletedBy = actualDeletedBy
             });
             
             _logger.LogInformation("Published ClientDeletedEvent for client {ClientId} with correlation ID {CorrelationId}", 
@@ -206,7 +261,7 @@ public class ClientApplicationService : IClientApplicationService
         {
             _logger.LogWarning(
                 "AUDIT: Client soft delete failed (not found) - ClientId: {ClientId}, TenantId: {TenantId}, AttemptedBy: {DeletedBy}, Timestamp: {Timestamp}",
-                clientId, tenantId, deletedBy ?? "Unknown", DateTime.UtcNow);
+                clientId, tenantId, actualDeletedBy, DateTime.UtcNow);
         }
         
         return result;

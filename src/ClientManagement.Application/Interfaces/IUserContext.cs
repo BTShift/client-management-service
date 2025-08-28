@@ -1,17 +1,27 @@
 namespace ClientManagement.Application.Interfaces;
 
 /// <summary>
-/// Provides access to the current user context
+/// Provides access to the current user context for audit and tracking purposes
 /// </summary>
-public interface IUserContext<TContext> where TContext : class
+public interface IUserContext
 {
     /// <summary>
-    /// Gets the current user's ID or email from the context
+    /// Gets the current user's ID from the authentication context
     /// </summary>
-    string? GetUserIdentity(TContext context);
+    string GetCurrentUserId();
     
     /// <summary>
-    /// Gets the current tenant ID from the context
+    /// Gets the current user's name or email for display purposes
     /// </summary>
-    string? GetTenantId(TContext context);
+    string GetCurrentUserName();
+    
+    /// <summary>
+    /// Gets the current tenant ID from the authentication context
+    /// </summary>
+    string GetCurrentTenantId();
+    
+    /// <summary>
+    /// Checks if a user is currently authenticated
+    /// </summary>
+    bool IsAuthenticated();
 }
