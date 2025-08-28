@@ -3,7 +3,7 @@ using ClientManagement.Application.Services;
 using ClientManagement.Infrastructure.Services;
 using ClientManagement.Api.Services;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using MassTransit;
+using Shift.Messaging.Infrastructure.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,35 +61,10 @@ builder.Services.AddHealthChecks()
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// Configure MassTransit with RabbitMQ
-builder.Services.AddMassTransit(x =>
-{
-    // Client Management Service doesn't have any consumers yet
-    // It only publishes events for other services to consume
-    // Consumers can be added here when needed
-    
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        // Get RabbitMQ configuration from environment variables (Railway compatible)
-        var rabbitMqHost = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "localhost";
-        var rabbitMqPort = int.Parse(Environment.GetEnvironmentVariable("RABBITMQ_PORT") ?? "5672");
-        var rabbitMqUsername = Environment.GetEnvironmentVariable("RABBITMQ_USERNAME") ?? "guest";
-        var rabbitMqPassword = Environment.GetEnvironmentVariable("RABBITMQ_PASSWORD") ?? "guest";
-        var rabbitMqVirtualHost = Environment.GetEnvironmentVariable("RABBITMQ_VIRTUAL_HOST") ?? "/";
-        
-        cfg.Host(rabbitMqHost, (ushort)rabbitMqPort, rabbitMqVirtualHost, h =>
-        {
-            h.Username(rabbitMqUsername);
-            h.Password(rabbitMqPassword);
-        });
-        
-        // Configure retry policies
-        cfg.UseMessageRetry(r => r.Exponential(5, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(3)));
-        
-        // Configure error handling
-        cfg.ConfigureEndpoints(context);
-    });
-});
+// Add Shift Messaging Infrastructure
+// Client Management Service doesn't have any consumers yet
+// It only publishes events for other services to consume
+builder.Services.AddShiftMessaging(builder.Configuration);
 
 // Add Authorization
 builder.Services.AddAuthorization();
