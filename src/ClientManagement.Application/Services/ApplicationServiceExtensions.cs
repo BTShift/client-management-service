@@ -8,6 +8,7 @@ public static class ApplicationServiceExtensions
     {
         // Add application services
         services.AddScoped<IClientApplicationService, ClientApplicationService>();
+        services.AddScoped<IClientGroupApplicationService, ClientGroupApplicationService>();
         
         return services;
     }
