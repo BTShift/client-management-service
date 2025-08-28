@@ -36,6 +36,12 @@ namespace ClientManagement.Infrastructure.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("address");
 
+                    b.Property<string>("Cif")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("cif");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -93,6 +99,10 @@ namespace ClientManagement.Infrastructure.Migrations
 
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_clients_tenant_id");
+
+                    b.HasIndex("TenantId", "Cif")
+                        .IsUnique()
+                        .HasDatabaseName("ix_clients_tenant_cif");
 
                     b.HasIndex("TenantId", "Email")
                         .IsUnique()

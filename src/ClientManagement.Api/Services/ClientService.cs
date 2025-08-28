@@ -38,6 +38,7 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
             var client = await _clientApplicationService.CreateClientAsync(
                 tenantId,
                 request.Name,
+                request.Cif,
                 request.Email,
                 request.Phone ?? string.Empty,
                 request.Address ?? string.Empty
@@ -115,6 +116,7 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
                 clientId,
                 tenantId,
                 request.Name,
+                request.Cif,
                 request.Email,
                 request.Phone ?? string.Empty,
                 request.Address ?? string.Empty,
@@ -206,6 +208,7 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
                 {
                     ClientId = client.Id.ToString(),
                     Name = client.Name,
+                    Cif = client.Cif,
                     Email = client.Email,
                     Status = client.Status.ToString()
                 });
@@ -226,6 +229,7 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
         {
             ClientId = client.Id.ToString(),
             Name = client.Name,
+            Cif = client.Cif,
             Email = client.Email,
             Phone = client.Phone,
             Address = client.Address,

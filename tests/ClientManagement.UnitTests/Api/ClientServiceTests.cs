@@ -64,6 +64,7 @@ public class ClientServiceTests
         {
             TenantId = "tenant-123",
             Name = "John Doe",
+            Cif = "CIF123456",
             Email = "john@example.com",
             Phone = "123-456-7890",
             Address = "123 Main St"
@@ -74,6 +75,7 @@ public class ClientServiceTests
             Id = Guid.NewGuid(),
             TenantId = request.TenantId,
             Name = request.Name,
+            Cif = request.Cif,
             Email = request.Email,
             Phone = request.Phone,
             Address = request.Address,
@@ -86,6 +88,7 @@ public class ClientServiceTests
             .Setup(x => x.CreateClientAsync(
                 request.TenantId,
                 request.Name,
+                request.Cif,
                 request.Email,
                 request.Phone,
                 request.Address))
@@ -98,6 +101,7 @@ public class ClientServiceTests
         result.Should().NotBeNull();
         result.ClientId.Should().Be(createdClient.Id.ToString());
         result.Name.Should().Be(createdClient.Name);
+        result.Cif.Should().Be(createdClient.Cif);
         result.Email.Should().Be(createdClient.Email);
         result.TenantId.Should().Be(createdClient.TenantId);
         result.Status.Should().Be("Active");
@@ -116,6 +120,7 @@ public class ClientServiceTests
         
         _mockApplicationService
             .Setup(x => x.CreateClientAsync(
+                It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
@@ -142,6 +147,7 @@ public class ClientServiceTests
             Id = clientId,
             TenantId = "tenant-123",
             Name = "John Doe",
+            Cif = "CIF456",
             Email = "john@example.com",
             Status = ClientStatus.Active,
             CreatedAt = DateTime.UtcNow,
@@ -202,6 +208,7 @@ public class ClientServiceTests
         {
             ClientId = clientId.ToString(),
             Name = "Updated Name",
+            Cif = "CIF789",
             Email = "updated@example.com",
             Phone = "999-888-7777",
             Address = "456 New St",
@@ -213,6 +220,7 @@ public class ClientServiceTests
             Id = clientId,
             TenantId = "tenant-123",
             Name = request.Name,
+            Cif = request.Cif,
             Email = request.Email,
             Phone = request.Phone,
             Address = request.Address,
@@ -226,6 +234,7 @@ public class ClientServiceTests
                 clientId,
                 "tenant-123",
                 request.Name,
+                request.Cif,
                 request.Email,
                 request.Phone,
                 request.Address,

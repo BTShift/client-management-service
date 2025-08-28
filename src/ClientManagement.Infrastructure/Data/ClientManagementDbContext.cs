@@ -40,6 +40,11 @@ public class ClientManagementDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(200);
             
+            entity.Property(e => e.Cif)
+                .HasColumnName("cif")
+                .IsRequired()
+                .HasMaxLength(50);
+            
             entity.Property(e => e.Email)
                 .HasColumnName("email")
                 .IsRequired()
@@ -81,6 +86,10 @@ public class ClientManagementDbContext : DbContext
             
             entity.HasIndex(e => new { e.TenantId, e.Email })
                 .HasDatabaseName("ix_clients_tenant_email")
+                .IsUnique();
+            
+            entity.HasIndex(e => new { e.TenantId, e.Cif })
+                .HasDatabaseName("ix_clients_tenant_cif")
                 .IsUnique();
             
             // Search performance indexes
