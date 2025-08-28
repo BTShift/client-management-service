@@ -13,14 +13,14 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
     private readonly IClientApplicationService _clientApplicationService;
     private readonly IClientGroupApplicationService _clientGroupApplicationService;
     private readonly IUserClientAssociationApplicationService _userClientAssociationService;
-    private readonly IUserContext<ServerCallContext> _userContext;
+    private readonly IUserContext _userContext;
 
     public ClientService(
         ILogger<ClientService> logger, 
         IClientApplicationService clientApplicationService,
         IClientGroupApplicationService clientGroupApplicationService,
         IUserClientAssociationApplicationService userClientAssociationService,
-        IUserContext<ServerCallContext> userContext)
+        IUserContext userContext)
     {
         _logger = logger;
         _clientApplicationService = clientApplicationService;
@@ -33,18 +33,25 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
     {
         try
         {
-            _logger.LogInformation("Creating client for tenant {TenantId}: {Name}", request.TenantId, request.Name);
+            _logger.LogInformation("Creating client for tenant {TenantId}: {CompanyName}", request.TenantId, request.CompanyName);
             
             // Extract tenant ID from request or context
             var tenantId = ExtractTenantId(request.TenantId, context);
             
             var client = await _clientApplicationService.CreateClientAsync(
                 tenantId,
-                request.Name,
-                request.Cif,
-                request.Email,
-                request.Phone ?? string.Empty,
-                request.Address ?? string.Empty
+                request.CompanyName,
+                request.Country ?? string.Empty,
+                request.Address ?? string.Empty,
+                request.IceNumber ?? string.Empty,
+                request.RcNumber ?? string.Empty,
+                request.VatNumber ?? string.Empty,
+                request.CnssNumber ?? string.Empty,
+                request.Industry ?? string.Empty,
+                request.AdminContactPerson ?? string.Empty,
+                request.BillingContactPerson ?? string.Empty,
+                request.FiscalYearEnd ?? string.Empty,
+                request.AssignedTeamId ?? string.Empty
             );
             
             return MapToClientResponse(client);
@@ -118,12 +125,19 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
             var client = await _clientApplicationService.UpdateClientAsync(
                 clientId,
                 tenantId,
-                request.Name,
-                request.Cif,
-                request.Email,
-                request.Phone ?? string.Empty,
+                request.CompanyName,
+                request.Country ?? string.Empty,
                 request.Address ?? string.Empty,
-                status
+                request.IceNumber ?? string.Empty,
+                request.RcNumber ?? string.Empty,
+                request.VatNumber ?? string.Empty,
+                request.CnssNumber ?? string.Empty,
+                request.Industry ?? string.Empty,
+                request.AdminContactPerson ?? string.Empty,
+                request.BillingContactPerson ?? string.Empty,
+                status,
+                request.FiscalYearEnd ?? string.Empty,
+                request.AssignedTeamId ?? string.Empty
             );
             
             if (client == null)
@@ -162,7 +176,7 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
             
             // Extract tenant ID and user information from context
             var tenantId = ExtractTenantId(null, context);
-            var deletedBy = _userContext.GetUserIdentity(context);
+            var deletedBy = _userContext.GetCurrentUserName();
             
             var result = await _clientApplicationService.DeleteClientAsync(clientId, tenantId, deletedBy);
             
@@ -210,9 +224,12 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
                 response.Clients.Add(new ClientInfo
                 {
                     ClientId = client.Id.ToString(),
-                    Name = client.Name,
-                    Cif = client.Cif,
-                    Email = client.Email,
+                    CompanyName = client.CompanyName,
+                    IceNumber = client.IceNumber ?? string.Empty,
+                    RcNumber = client.RcNumber ?? string.Empty,
+                    VatNumber = client.VatNumber ?? string.Empty,
+                    CnssNumber = client.CnssNumber ?? string.Empty,
+                    Industry = client.Industry ?? string.Empty,
                     Status = client.Status.ToString()
                 });
             }
@@ -231,13 +248,20 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
         return new ClientResponse
         {
             ClientId = client.Id.ToString(),
-            Name = client.Name,
-            Cif = client.Cif,
-            Email = client.Email,
-            Phone = client.Phone,
-            Address = client.Address,
+            CompanyName = client.CompanyName,
+            Country = client.Country ?? string.Empty,
+            Address = client.Address ?? string.Empty,
+            IceNumber = client.IceNumber ?? string.Empty,
+            RcNumber = client.RcNumber ?? string.Empty,
+            VatNumber = client.VatNumber ?? string.Empty,
+            CnssNumber = client.CnssNumber ?? string.Empty,
+            Industry = client.Industry ?? string.Empty,
+            AdminContactPerson = client.AdminContactPerson ?? string.Empty,
+            BillingContactPerson = client.BillingContactPerson ?? string.Empty,
             Status = client.Status.ToString(),
             TenantId = client.TenantId,
+            FiscalYearEnd = client.FiscalYearEnd?.ToString("yyyy-MM-dd") ?? string.Empty,
+            AssignedTeamId = client.AssignedTeamId?.ToString() ?? string.Empty,
             CreatedAt = client.CreatedAt.ToString("O"),
             UpdatedAt = client.UpdatedAt.ToString("O")
         };
@@ -352,7 +376,7 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
             }
             
             var tenantId = ExtractTenantId(null, context);
-            var userIdentity = _userContext.GetUserIdentity(context);
+            var userIdentity = _userContext.GetCurrentUserName();
             
             var result = await _clientGroupApplicationService.DeleteGroupAsync(groupId, tenantId, userIdentity);
             
@@ -430,7 +454,7 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
             }
             
             var tenantId = ExtractTenantId(null, context);
-            var userIdentity = _userContext.GetUserIdentity(context);
+            var userIdentity = _userContext.GetCurrentUserName();
             
             var result = await _clientGroupApplicationService.AddClientToGroupAsync(
                 clientId,
@@ -510,8 +534,12 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
                 response.Clients.Add(new ClientInfo
                 {
                     ClientId = client.Id.ToString(),
-                    Name = client.Name,
-                    Email = client.Email,
+                    CompanyName = client.CompanyName,
+                    IceNumber = client.IceNumber ?? string.Empty,
+                    RcNumber = client.RcNumber ?? string.Empty,
+                    VatNumber = client.VatNumber ?? string.Empty,
+                    CnssNumber = client.CnssNumber ?? string.Empty,
+                    Industry = client.Industry ?? string.Empty,
                     Status = client.Status.ToString()
                 });
             }
@@ -593,7 +621,7 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
             }
             
             var tenantId = ExtractTenantId(request.TenantId, context);
-            var assignedBy = request.AssignedBy ?? _userContext.GetUserIdentity(context) ?? "system";
+            var assignedBy = request.AssignedBy ?? _userContext.GetCurrentUserName() ?? "system";
             
             var association = await _userClientAssociationService.AssignUserToClientAsync(
                 request.UserId,
@@ -744,9 +772,12 @@ public class ClientService : Contract.ClientManagement.ClientManagementBase
                     response.Clients.Add(new ClientInfo
                     {
                         ClientId = association.Client.Id.ToString(),
-                        Name = association.Client.Name,
-                        Cif = association.Client.Cif,
-                        Email = association.Client.Email,
+                        CompanyName = association.Client.CompanyName,
+                        IceNumber = association.Client.IceNumber ?? string.Empty,
+                        RcNumber = association.Client.RcNumber ?? string.Empty,
+                        VatNumber = association.Client.VatNumber ?? string.Empty,
+                        CnssNumber = association.Client.CnssNumber ?? string.Empty,
+                        Industry = association.Client.Industry ?? string.Empty,
                         Status = association.Client.Status.ToString()
                     });
                 }

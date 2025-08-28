@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ClientManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(ClientManagementDbContext))]
-    [Migration("20250828104042_AddUserClientAssociations")]
-    partial class AddUserClientAssociations
+    [Migration("20250828112319_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -34,16 +34,38 @@ namespace ClientManagement.Infrastructure.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("Address")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("text")
                         .HasColumnName("address");
 
-                    b.Property<string>("Cif")
-                        .IsRequired()
+                    b.Property<string>("AdminContactPerson")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("admin_contact_person");
+
+                    b.Property<Guid?>("AssignedTeamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assigned_team_id");
+
+                    b.Property<string>("BillingContactPerson")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("billing_contact_person");
+
+                    b.Property<string>("CnssNumber")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
-                        .HasColumnName("cif");
+                        .HasColumnName("cnss_number");
+
+                    b.Property<string>("CompanyName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("company_name");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("country");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -58,11 +80,19 @@ namespace ClientManagement.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("deleted_by");
 
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(250)
-                        .HasColumnType("character varying(250)")
-                        .HasColumnName("email");
+                    b.Property<DateTime?>("FiscalYearEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fiscal_year_end");
+
+                    b.Property<string>("IceNumber")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("ice_number");
+
+                    b.Property<string>("Industry")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("industry");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -70,22 +100,17 @@ namespace ClientManagement.Infrastructure.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Phone")
-                        .IsRequired()
+                    b.Property<string>("RcNumber")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
-                        .HasColumnName("phone");
+                        .HasColumnName("rc_number");
 
                     b.Property<string>("Status")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Active")
                         .HasColumnName("status");
 
                     b.Property<string>("TenantId")
@@ -98,24 +123,44 @@ namespace ClientManagement.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<string>("VatNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("vat_number");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("AssignedTeamId")
+                        .HasDatabaseName("ix_clients_assigned_team_id")
+                        .HasFilter("assigned_team_id IS NOT NULL");
 
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_clients_tenant_id");
 
-                    b.HasIndex("TenantId", "Cif")
-                        .IsUnique()
-                        .HasDatabaseName("ix_clients_tenant_cif");
+                    b.HasIndex("TenantId", "CnssNumber")
+                        .HasDatabaseName("ix_clients_tenant_cnss_number")
+                        .HasFilter("cnss_number IS NOT NULL");
 
-                    b.HasIndex("TenantId", "Email")
-                        .IsUnique()
-                        .HasDatabaseName("ix_clients_tenant_email");
+                    b.HasIndex("TenantId", "CompanyName")
+                        .HasDatabaseName("ix_clients_tenant_company_name");
+
+                    b.HasIndex("TenantId", "IceNumber")
+                        .HasDatabaseName("ix_clients_tenant_ice_number")
+                        .HasFilter("ice_number IS NOT NULL");
 
                     b.HasIndex("TenantId", "IsDeleted")
                         .HasDatabaseName("ix_clients_tenant_deleted");
 
-                    b.HasIndex("TenantId", "Name")
-                        .HasDatabaseName("ix_clients_tenant_name");
+                    b.HasIndex("TenantId", "RcNumber")
+                        .HasDatabaseName("ix_clients_tenant_rc_number")
+                        .HasFilter("rc_number IS NOT NULL");
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("ix_clients_tenant_status");
+
+                    b.HasIndex("TenantId", "VatNumber")
+                        .HasDatabaseName("ix_clients_tenant_vat_number")
+                        .HasFilter("vat_number IS NOT NULL");
 
                     b.HasIndex("TenantId", "DeletedAt", "DeletedBy")
                         .HasDatabaseName("ix_clients_tenant_deletion_audit")

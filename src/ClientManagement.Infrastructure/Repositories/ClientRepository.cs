@@ -40,12 +40,19 @@ public class ClientRepository : IClientRepository
         if (existingClient == null)
             return null;
         
-        existingClient.Name = client.Name;
-        existingClient.Cif = client.Cif;
-        existingClient.Email = client.Email;
-        existingClient.Phone = client.Phone;
+        existingClient.CompanyName = client.CompanyName;
+        existingClient.Country = client.Country;
         existingClient.Address = client.Address;
+        existingClient.IceNumber = client.IceNumber;
+        existingClient.RcNumber = client.RcNumber;
+        existingClient.VatNumber = client.VatNumber;
+        existingClient.CnssNumber = client.CnssNumber;
+        existingClient.Industry = client.Industry;
+        existingClient.AdminContactPerson = client.AdminContactPerson;
+        existingClient.BillingContactPerson = client.BillingContactPerson;
         existingClient.Status = client.Status;
+        existingClient.FiscalYearEnd = client.FiscalYearEnd;
+        existingClient.AssignedTeamId = client.AssignedTeamId;
         existingClient.UpdatedAt = DateTime.UtcNow;
         
         await _context.SaveChangesAsync();
@@ -83,15 +90,17 @@ public class ClientRepository : IClientRepository
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             query = query.Where(c => 
-                c.Name.Contains(searchTerm) || 
-                c.Cif.Contains(searchTerm) ||
-                c.Email.Contains(searchTerm));
+                c.CompanyName.Contains(searchTerm) || 
+                (c.IceNumber != null && c.IceNumber.Contains(searchTerm)) ||
+                (c.RcNumber != null && c.RcNumber.Contains(searchTerm)) ||
+                (c.VatNumber != null && c.VatNumber.Contains(searchTerm)) ||
+                (c.Industry != null && c.Industry.Contains(searchTerm)));
         }
         
         var totalCount = await query.CountAsync();
         
         var items = await query
-            .OrderBy(c => c.Name)
+            .OrderBy(c => c.CompanyName)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
@@ -99,10 +108,10 @@ public class ClientRepository : IClientRepository
         return (items, totalCount);
     }
 
-    public async Task<bool> EmailExistsAsync(string email, string tenantId, Guid? excludeClientId = null)
+    public async Task<bool> IceNumberExistsAsync(string iceNumber, string tenantId, Guid? excludeClientId = null)
     {
         var query = _context.Clients
-            .Where(c => c.TenantId == tenantId && c.Email == email);
+            .Where(c => c.TenantId == tenantId && c.IceNumber == iceNumber);
         
         if (excludeClientId.HasValue)
         {
@@ -112,10 +121,10 @@ public class ClientRepository : IClientRepository
         return await query.AnyAsync();
     }
     
-    public async Task<bool> CifExistsAsync(string cif, string tenantId, Guid? excludeClientId = null)
+    public async Task<bool> RcNumberExistsAsync(string rcNumber, string tenantId, Guid? excludeClientId = null)
     {
         var query = _context.Clients
-            .Where(c => c.TenantId == tenantId && c.Cif == cif);
+            .Where(c => c.TenantId == tenantId && c.RcNumber == rcNumber);
         
         if (excludeClientId.HasValue)
         {

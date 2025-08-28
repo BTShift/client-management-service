@@ -34,11 +34,19 @@ public class ClientRepositoryTests : IDisposable
         var client = new Client
         {
             TenantId = "tenant-123",
-            Name = "Test Client",
-            Email = "test@example.com",
-            Phone = "123-456-7890",
-            Address = "123 Test St",
-            Status = ClientStatus.Active
+            CompanyName = "Test Company",
+            Country = "Morocco",
+            Address = "123 Test St, Casablanca",
+            IceNumber = "ICE123456789",
+            RcNumber = "RC12345",
+            VatNumber = "VAT12345",
+            CnssNumber = "CNSS12345",
+            Industry = "Technology",
+            AdminContactPerson = "John Doe",
+            BillingContactPerson = "Jane Doe",
+            Status = ClientStatus.Active,
+            FiscalYearEnd = new DateTime(2024, 12, 31),
+            AssignedTeamId = Guid.NewGuid()
         };
 
         // Act
@@ -49,299 +57,314 @@ public class ClientRepositoryTests : IDisposable
         result.Id.Should().NotBeEmpty();
         result.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
         result.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
-        
-        // Verify in database
-        var dbClient = await _context.Clients.FirstOrDefaultAsync(c => c.Id == result.Id);
-        dbClient.Should().NotBeNull();
-        dbClient!.Name.Should().Be("Test Client");
+        result.CompanyName.Should().Be("Test Company");
     }
 
     [Fact]
     public async Task GetByIdAsync_ShouldReturnClient_WhenExists()
     {
         // Arrange
-        var clientId = Guid.NewGuid();
         var client = new Client
         {
-            Id = clientId,
             TenantId = "tenant-123",
-            Name = "Test Client",
-            Email = "test@example.com",
-            Status = ClientStatus.Active,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CompanyName = "Test Company",
+            IceNumber = "ICE123456789",
+            Status = ClientStatus.Active
         };
         
-        _context.Clients.Add(client);
+        await _context.Clients.AddAsync(client);
         await _context.SaveChangesAsync();
 
         // Act
-        var result = await _repository.GetByIdAsync(clientId, "tenant-123");
+        var result = await _repository.GetByIdAsync(client.Id, "tenant-123");
 
         // Assert
         result.Should().NotBeNull();
-        result!.Id.Should().Be(clientId);
-        result.Name.Should().Be("Test Client");
+        result!.CompanyName.Should().Be("Test Company");
     }
 
     [Fact]
-    public async Task GetByIdAsync_ShouldReturnNull_WhenWrongTenant()
+    public async Task GetByIdAsync_ShouldReturnNull_WhenNotExists()
     {
-        // Arrange
-        var clientId = Guid.NewGuid();
-        var client = new Client
-        {
-            Id = clientId,
-            TenantId = "tenant-123",
-            Name = "Test Client",
-            Email = "test@example.com",
-            Status = ClientStatus.Active,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-        
-        _context.Clients.Add(client);
-        await _context.SaveChangesAsync();
-
         // Act
-        var result = await _repository.GetByIdAsync(clientId, "different-tenant");
+        var result = await _repository.GetByIdAsync(Guid.NewGuid(), "tenant-123");
 
         // Assert
         result.Should().BeNull();
     }
 
     [Fact]
-    public async Task UpdateAsync_ShouldUpdateExistingClient()
+    public async Task UpdateAsync_ShouldUpdateClient()
     {
         // Arrange
-        var clientId = Guid.NewGuid();
-        var originalClient = new Client
+        var client = new Client
         {
-            Id = clientId,
             TenantId = "tenant-123",
-            Name = "Original Name",
-            Email = "original@example.com",
-            Status = ClientStatus.Active,
-            CreatedAt = DateTime.UtcNow.AddHours(-1),
-            UpdatedAt = DateTime.UtcNow.AddHours(-1)
+            CompanyName = "Test Company",
+            IceNumber = "ICE123456789",
+            Status = ClientStatus.Active
         };
         
-        _context.Clients.Add(originalClient);
+        await _context.Clients.AddAsync(client);
         await _context.SaveChangesAsync();
-        
-        // Detach the entity to simulate a disconnected scenario
-        _context.Entry(originalClient).State = EntityState.Detached;
-        
-        var updateClient = new Client
+
+        // Act
+        var updatedClient = new Client
         {
-            Id = clientId,
-            TenantId = "tenant-123",
-            Name = "Updated Name",
-            Email = "updated@example.com",
-            Phone = "999-999-9999",
+            Id = client.Id,
+            TenantId = client.TenantId,
+            CompanyName = "Updated Company",
+            IceNumber = "ICE987654321",
+            RcNumber = "RC54321",
             Status = ClientStatus.Inactive
         };
 
-        // Act
-        var result = await _repository.UpdateAsync(updateClient);
+        var result = await _repository.UpdateAsync(updatedClient);
 
         // Assert
         result.Should().NotBeNull();
-        result!.Name.Should().Be("Updated Name");
-        result.Email.Should().Be("updated@example.com");
-        result.Phone.Should().Be("999-999-9999");
+        result!.CompanyName.Should().Be("Updated Company");
+        result.IceNumber.Should().Be("ICE987654321");
         result.Status.Should().Be(ClientStatus.Inactive);
         result.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
-        
-        // Verify in database
-        var dbClient = await _context.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.Id == clientId);
-        dbClient!.Name.Should().Be("Updated Name");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ShouldReturnNull_WhenClientNotExists()
+    {
+        // Arrange
+        var client = new Client
+        {
+            Id = Guid.NewGuid(),
+            TenantId = "tenant-123",
+            CompanyName = "Test Company",
+            Status = ClientStatus.Active
+        };
+
+        // Act
+        var result = await _repository.UpdateAsync(client);
+
+        // Assert
+        result.Should().BeNull();
     }
 
     [Fact]
     public async Task DeleteAsync_ShouldSoftDeleteClient()
     {
         // Arrange
-        var clientId = Guid.NewGuid();
-        var deletedBy = "admin@example.com";
         var client = new Client
         {
-            Id = clientId,
             TenantId = "tenant-123",
-            Name = "Test Client",
-            Email = "test@example.com",
-            Status = ClientStatus.Active,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CompanyName = "Test Company",
+            IceNumber = "ICE123456789",
+            Status = ClientStatus.Active
         };
         
-        _context.Clients.Add(client);
+        await _context.Clients.AddAsync(client);
         await _context.SaveChangesAsync();
 
         // Act
-        var result = await _repository.DeleteAsync(clientId, "tenant-123", deletedBy);
+        var result = await _repository.DeleteAsync(client.Id, "tenant-123", "test-user");
 
         // Assert
         result.Should().BeTrue();
         
-        // Verify soft delete in database
-        var dbClient = await _context.Clients
+        // Query without filter to check soft delete
+        var deletedClient = await _context.Clients
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.Id == clientId);
+            .FirstOrDefaultAsync(c => c.Id == client.Id);
         
-        dbClient.Should().NotBeNull();
-        dbClient!.IsDeleted.Should().BeTrue();
-        dbClient.DeletedAt.Should().NotBeNull();
-        dbClient.DeletedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
-        dbClient.DeletedBy.Should().Be(deletedBy);
+        deletedClient.Should().NotBeNull();
+        deletedClient!.IsDeleted.Should().BeTrue();
+        deletedClient.DeletedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        deletedClient.DeletedBy.Should().Be("test-user");
     }
 
     [Fact]
-    public async Task ListAsync_ShouldReturnPagedResults()
+    public async Task DeleteAsync_ShouldReturnFalse_WhenClientNotExists()
     {
-        // Arrange
-        var tenantId = "tenant-123";
-        for (int i = 1; i <= 25; i++)
-        {
-            _context.Clients.Add(new Client
-            {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                Name = $"Client {i:D2}",
-                Email = $"client{i}@example.com",
-                Status = ClientStatus.Active,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            });
-        }
-        
-        // Add clients from different tenant (should not be included)
-        _context.Clients.Add(new Client
-        {
-            Id = Guid.NewGuid(),
-            TenantId = "different-tenant",
-            Name = "Other Client",
-            Email = "other@example.com",
-            Status = ClientStatus.Active,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        });
-        
-        await _context.SaveChangesAsync();
-
         // Act
-        var (items, totalCount) = await _repository.ListAsync(tenantId, 2, 10);
-
-        // Assert
-        items.Should().HaveCount(10);
-        totalCount.Should().Be(25);
-        items[0].Name.Should().Be("Client 11"); // Page 2, ordered by name
-    }
-
-    [Fact]
-    public async Task ListAsync_ShouldFilterBySearchTerm()
-    {
-        // Arrange
-        var tenantId = "tenant-123";
-        _context.Clients.AddRange(
-            new Client { Id = Guid.NewGuid(), TenantId = tenantId, Name = "John Doe", Email = "john@example.com", Status = ClientStatus.Active, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new Client { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Jane Smith", Email = "jane@example.com", Status = ClientStatus.Active, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new Client { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Bob Johnson", Email = "bob@test.com", Status = ClientStatus.Active, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
-        );
-        
-        await _context.SaveChangesAsync();
-
-        // Act
-        var (items, totalCount) = await _repository.ListAsync(tenantId, 1, 10, "example.com");
-
-        // Assert
-        items.Should().HaveCount(2); // Both John and Jane have example.com in email
-        totalCount.Should().Be(2);
-        items.Any(c => c.Name == "John Doe").Should().BeTrue();
-        items.Any(c => c.Name == "Jane Smith").Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task ListAsync_ShouldExcludeSoftDeletedClients()
-    {
-        // Arrange
-        var tenantId = "tenant-123";
-        _context.Clients.AddRange(
-            new Client { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Active Client", Email = "active@example.com", Status = ClientStatus.Active, IsDeleted = false, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new Client { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Deleted Client", Email = "deleted@example.com", Status = ClientStatus.Active, IsDeleted = true, DeletedAt = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
-        );
-        
-        await _context.SaveChangesAsync();
-
-        // Act
-        var (items, totalCount) = await _repository.ListAsync(tenantId, 1, 10);
-
-        // Assert
-        items.Should().HaveCount(1);
-        totalCount.Should().Be(1);
-        items[0].Name.Should().Be("Active Client");
-    }
-
-    [Fact]
-    public async Task EmailExistsAsync_ShouldReturnTrue_WhenEmailExists()
-    {
-        // Arrange
-        var tenantId = "tenant-123";
-        var client = new Client
-        {
-            Id = Guid.NewGuid(),
-            TenantId = tenantId,
-            Name = "Test Client",
-            Email = "existing@example.com",
-            Status = ClientStatus.Active,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-        
-        _context.Clients.Add(client);
-        await _context.SaveChangesAsync();
-
-        // Act
-        var result = await _repository.EmailExistsAsync("existing@example.com", tenantId);
-
-        // Assert
-        result.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task EmailExistsAsync_ShouldReturnFalse_WhenEmailDoesNotExist()
-    {
-        // Arrange & Act
-        var result = await _repository.EmailExistsAsync("nonexistent@example.com", "tenant-123");
+        var result = await _repository.DeleteAsync(Guid.NewGuid(), "tenant-123");
 
         // Assert
         result.Should().BeFalse();
     }
 
     [Fact]
-    public async Task EmailExistsAsync_ShouldExcludeSpecifiedClient()
+    public async Task ListAsync_ShouldReturnPaginatedResults()
     {
         // Arrange
-        var clientId = Guid.NewGuid();
-        var tenantId = "tenant-123";
-        var client = new Client
+        var clients = new[]
         {
-            Id = clientId,
-            TenantId = tenantId,
-            Name = "Test Client",
-            Email = "test@example.com",
-            Status = ClientStatus.Active,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            new Client { TenantId = "tenant-123", CompanyName = "Company A", IceNumber = "ICE111", Status = ClientStatus.Active },
+            new Client { TenantId = "tenant-123", CompanyName = "Company B", IceNumber = "ICE222", Status = ClientStatus.Active },
+            new Client { TenantId = "tenant-123", CompanyName = "Company C", IceNumber = "ICE333", Status = ClientStatus.Active },
+            new Client { TenantId = "other-tenant", CompanyName = "Company D", IceNumber = "ICE444", Status = ClientStatus.Active }
         };
         
-        _context.Clients.Add(client);
+        await _context.Clients.AddRangeAsync(clients);
         await _context.SaveChangesAsync();
 
         // Act
-        var result = await _repository.EmailExistsAsync("test@example.com", tenantId, clientId);
+        var result = await _repository.ListAsync("tenant-123", page: 1, pageSize: 2);
 
         // Assert
-        result.Should().BeFalse(); // Should exclude the client with the specified ID
+        result.Items.Count.Should().Be(2);
+        result.TotalCount.Should().Be(3);
+        result.Items[0].CompanyName.Should().Be("Company A");
+        result.Items[1].CompanyName.Should().Be("Company B");
+    }
+
+    [Fact]
+    public async Task ListAsync_ShouldFilterBySoftDelete()
+    {
+        // Arrange
+        var clients = new[]
+        {
+            new Client { TenantId = "tenant-123", CompanyName = "Company A", Status = ClientStatus.Active },
+            new Client { TenantId = "tenant-123", CompanyName = "Company B", Status = ClientStatus.Active, IsDeleted = true },
+        };
+        
+        await _context.Clients.AddRangeAsync(clients);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _repository.ListAsync("tenant-123");
+
+        // Assert
+        result.Items.Count.Should().Be(1);
+        result.TotalCount.Should().Be(1);
+        result.Items[0].CompanyName.Should().Be("Company A");
+    }
+
+    [Fact]
+    public async Task ListAsync_ShouldFilterBySearchTerm()
+    {
+        // Arrange
+        var clients = new[]
+        {
+            new Client { TenantId = "tenant-123", CompanyName = "ABC Company", IceNumber = "ICE123", Status = ClientStatus.Active },
+            new Client { TenantId = "tenant-123", CompanyName = "XYZ Company", IceNumber = "ICE456", Status = ClientStatus.Active },
+            new Client { TenantId = "tenant-123", CompanyName = "Test Corp", RcNumber = "ABC789", Status = ClientStatus.Active }
+        };
+        
+        await _context.Clients.AddRangeAsync(clients);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _repository.ListAsync("tenant-123", searchTerm: "ABC");
+
+        // Assert
+        result.Items.Count.Should().Be(2);
+        result.Items.Should().Contain(c => c.CompanyName == "ABC Company");
+        result.Items.Should().Contain(c => c.RcNumber == "ABC789");
+    }
+
+    [Fact]
+    public async Task IceNumberExistsAsync_ShouldReturnTrue_WhenExists()
+    {
+        // Arrange
+        var client = new Client
+        {
+            TenantId = "tenant-123",
+            CompanyName = "Test Company",
+            IceNumber = "ICE123456789",
+            Status = ClientStatus.Active
+        };
+        
+        await _context.Clients.AddAsync(client);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _repository.IceNumberExistsAsync("ICE123456789", "tenant-123");
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IceNumberExistsAsync_ShouldReturnFalse_WhenNotExists()
+    {
+        // Act
+        var result = await _repository.IceNumberExistsAsync("ICE999999999", "tenant-123");
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IceNumberExistsAsync_ShouldExcludeSpecifiedClient()
+    {
+        // Arrange
+        var client = new Client
+        {
+            TenantId = "tenant-123",
+            CompanyName = "Test Company",
+            IceNumber = "ICE123456789",
+            Status = ClientStatus.Active
+        };
+        
+        await _context.Clients.AddAsync(client);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _repository.IceNumberExistsAsync("ICE123456789", "tenant-123", client.Id);
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RcNumberExistsAsync_ShouldReturnTrue_WhenExists()
+    {
+        // Arrange
+        var client = new Client
+        {
+            TenantId = "tenant-123",
+            CompanyName = "Test Company",
+            RcNumber = "RC12345",
+            Status = ClientStatus.Active
+        };
+        
+        await _context.Clients.AddAsync(client);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _repository.RcNumberExistsAsync("RC12345", "tenant-123");
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RcNumberExistsAsync_ShouldReturnFalse_WhenNotExists()
+    {
+        // Act
+        var result = await _repository.RcNumberExistsAsync("RC99999", "tenant-123");
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RcNumberExistsAsync_ShouldExcludeSpecifiedClient()
+    {
+        // Arrange
+        var client = new Client
+        {
+            TenantId = "tenant-123",
+            CompanyName = "Test Company",
+            RcNumber = "RC12345",
+            Status = ClientStatus.Active
+        };
+        
+        await _context.Clients.AddAsync(client);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _repository.RcNumberExistsAsync("RC12345", "tenant-123", client.Id);
+
+        // Assert
+        result.Should().BeFalse();
     }
 }

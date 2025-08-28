@@ -13,6 +13,6 @@ public interface IClientRepository
         int page = 1, 
         int pageSize = 20, 
         string? searchTerm = null);
-    Task<bool> EmailExistsAsync(string email, string tenantId, Guid? excludeClientId = null);
-    Task<bool> CifExistsAsync(string cif, string tenantId, Guid? excludeClientId = null);
+    Task<bool> IceNumberExistsAsync(string iceNumber, string tenantId, Guid? excludeClientId = null);
+    Task<bool> RcNumberExistsAsync(string rcNumber, string tenantId, Guid? excludeClientId = null);
 }

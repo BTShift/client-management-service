@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ClientManagement.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddClientGroups : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -41,11 +41,19 @@ namespace ClientManagement.Infrastructure.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     tenant_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    email = table.Column<string>(type: "character varying(250)", maxLength: 250, nullable: false),
-                    phone = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    address = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    company_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    country = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    address = table.Column<string>(type: "text", nullable: true),
+                    ice_number = table.Column<string>(type: "character varying(15)", maxLength: 15, nullable: true),
+                    rc_number = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    vat_number = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    cnss_number = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    industry = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    admin_contact_person = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    billing_contact_person = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "Active"),
+                    fiscal_year_end = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    assigned_team_id = table.Column<Guid>(type: "uuid", nullable: true),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -86,6 +94,30 @@ namespace ClientManagement.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "user_client_associations",
+                schema: "client_management",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    client_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    assigned_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    assigned_by = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_user_client_associations", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_user_client_associations_clients_client_id",
+                        column: x => x.client_id,
+                        principalSchema: "client_management",
+                        principalTable: "clients",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "ix_client_group_memberships_client_id",
                 schema: "client_management",
@@ -118,6 +150,26 @@ namespace ClientManagement.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_clients_assigned_team_id",
+                schema: "client_management",
+                table: "clients",
+                column: "assigned_team_id",
+                filter: "assigned_team_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_clients_tenant_cnss_number",
+                schema: "client_management",
+                table: "clients",
+                columns: new[] { "tenant_id", "cnss_number" },
+                filter: "cnss_number IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_clients_tenant_company_name",
+                schema: "client_management",
+                table: "clients",
+                columns: new[] { "tenant_id", "company_name" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_clients_tenant_deleted",
                 schema: "client_management",
                 table: "clients",
@@ -131,11 +183,11 @@ namespace ClientManagement.Infrastructure.Migrations
                 filter: "deleted_at IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "ix_clients_tenant_email",
+                name: "ix_clients_tenant_ice_number",
                 schema: "client_management",
                 table: "clients",
-                columns: new[] { "tenant_id", "email" },
-                unique: true);
+                columns: new[] { "tenant_id", "ice_number" },
+                filter: "ice_number IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "ix_clients_tenant_id",
@@ -144,10 +196,49 @@ namespace ClientManagement.Infrastructure.Migrations
                 column: "tenant_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_clients_tenant_name",
+                name: "ix_clients_tenant_rc_number",
                 schema: "client_management",
                 table: "clients",
-                columns: new[] { "tenant_id", "name" });
+                columns: new[] { "tenant_id", "rc_number" },
+                filter: "rc_number IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_clients_tenant_status",
+                schema: "client_management",
+                table: "clients",
+                columns: new[] { "tenant_id", "status" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_clients_tenant_vat_number",
+                schema: "client_management",
+                table: "clients",
+                columns: new[] { "tenant_id", "vat_number" },
+                filter: "vat_number IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_client_associations_client",
+                schema: "client_management",
+                table: "user_client_associations",
+                columns: new[] { "tenant_id", "client_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_user_client_associations_client_id",
+                schema: "client_management",
+                table: "user_client_associations",
+                column: "client_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_client_associations_unique",
+                schema: "client_management",
+                table: "user_client_associations",
+                columns: new[] { "tenant_id", "user_id", "client_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_client_associations_user",
+                schema: "client_management",
+                table: "user_client_associations",
+                columns: new[] { "tenant_id", "user_id" });
         }
 
         /// <inheritdoc />
@@ -155,6 +246,10 @@ namespace ClientManagement.Infrastructure.Migrations
         {
             migrationBuilder.DropTable(
                 name: "client_group_memberships",
+                schema: "client_management");
+
+            migrationBuilder.DropTable(
+                name: "user_client_associations",
                 schema: "client_management");
 
             migrationBuilder.DropTable(

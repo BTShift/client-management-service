@@ -14,6 +14,7 @@ public class ClientApplicationServiceTests
     private readonly Mock<IClientRepository> _mockRepository;
     private readonly Mock<ILogger<ClientApplicationService>> _mockLogger;
     private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+    private readonly Mock<IUserContext> _mockUserContext;
     private readonly ClientApplicationService _service;
 
     public ClientApplicationServiceTests()
@@ -21,26 +22,45 @@ public class ClientApplicationServiceTests
         _mockRepository = new Mock<IClientRepository>();
         _mockLogger = new Mock<ILogger<ClientApplicationService>>();
         _mockPublishEndpoint = new Mock<IPublishEndpoint>();
-        _service = new ClientApplicationService(_mockRepository.Object, _mockLogger.Object, _mockPublishEndpoint.Object);
+        _mockUserContext = new Mock<IUserContext>();
+        
+        // Setup default user context behavior
+        _mockUserContext.Setup(x => x.IsAuthenticated()).Returns(true);
+        _mockUserContext.Setup(x => x.GetCurrentUserName()).Returns("test-user");
+        _mockUserContext.Setup(x => x.GetCurrentUserId()).Returns("user-123");
+        _mockUserContext.Setup(x => x.GetCurrentTenantId()).Returns("tenant-123");
+        
+        _service = new ClientApplicationService(
+            _mockRepository.Object, 
+            _mockLogger.Object, 
+            _mockPublishEndpoint.Object,
+            _mockUserContext.Object);
     }
 
     [Fact]
-    public async Task CreateClientAsync_ShouldCreateClient_WhenEmailAndCifAreUnique()
+    public async Task CreateClientAsync_ShouldCreateClient_WhenIceAndRcAreUnique()
     {
         // Arrange
         var tenantId = "tenant-123";
-        var name = "John Doe";
-        var cif = "CIF123456";
-        var email = "john@example.com";
-        var phone = "123-456-7890";
-        var address = "123 Main St";
+        var companyName = "Test Company Ltd";
+        var country = "Morocco";
+        var address = "123 Main St, Casablanca";
+        var iceNumber = "ICE123456789";
+        var rcNumber = "RC12345";
+        var vatNumber = "VAT12345";
+        var cnssNumber = "CNSS12345";
+        var industry = "Technology";
+        var adminContact = "John Doe";
+        var billingContact = "Jane Doe";
+        var fiscalYearEnd = "2024-12-31";
+        var assignedTeamId = Guid.NewGuid().ToString();
         
         _mockRepository
-            .Setup(x => x.EmailExistsAsync(email, tenantId, null))
+            .Setup(x => x.IceNumberExistsAsync(iceNumber, tenantId, null))
             .ReturnsAsync(false);
         
         _mockRepository
-            .Setup(x => x.CifExistsAsync(cif, tenantId, null))
+            .Setup(x => x.RcNumberExistsAsync(rcNumber, tenantId, null))
             .ReturnsAsync(false);
         
         _mockRepository
@@ -54,15 +74,19 @@ public class ClientApplicationServiceTests
             });
 
         // Act
-        var result = await _service.CreateClientAsync(tenantId, name, cif, email, phone, address);
+        var result = await _service.CreateClientAsync(
+            tenantId, companyName, country, address, 
+            iceNumber, rcNumber, vatNumber, cnssNumber, 
+            industry, adminContact, billingContact, 
+            fiscalYearEnd, assignedTeamId);
 
         // Assert
         result.Should().NotBeNull();
-        result.Name.Should().Be(name);
-        result.Cif.Should().Be(cif);
-        result.Email.Should().Be(email);
-        result.Phone.Should().Be(phone);
-        result.Address.Should().Be(address);
+        result.CompanyName.Should().Be(companyName);
+        result.IceNumber.Should().Be(iceNumber);
+        result.RcNumber.Should().Be(rcNumber);
+        result.VatNumber.Should().Be(vatNumber);
+        result.CnssNumber.Should().Be(cnssNumber);
         result.TenantId.Should().Be(tenantId);
         result.Status.Should().Be(ClientStatus.Active);
         
@@ -70,44 +94,55 @@ public class ClientApplicationServiceTests
     }
 
     [Fact]
-    public async Task CreateClientAsync_ShouldThrowException_WhenEmailExists()
+    public async Task CreateClientAsync_ShouldThrowException_WhenIceNumberExists()
     {
         // Arrange
         var tenantId = "tenant-123";
-        var email = "existing@example.com";
+        var iceNumber = "ICE987654321";
         
         _mockRepository
-            .Setup(x => x.EmailExistsAsync(email, tenantId, null))
+            .Setup(x => x.IceNumberExistsAsync(iceNumber, tenantId, null))
             .ReturnsAsync(true);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.CreateClientAsync(tenantId, "Name", "CIF123", email, "", ""));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.CreateClientAsync(
+                tenantId, "Company", "Morocco", "Address",
+                iceNumber, "RC999", "VAT999", "CNSS999",
+                "Industry", "Admin", "Billing",
+                "2024-12-31", ""));
+        
+        exception.Message.Should().Contain("ICE number");
+        exception.Message.Should().Contain("already in use");
         
         _mockRepository.Verify(x => x.CreateAsync(It.IsAny<Client>()), Times.Never);
     }
 
     [Fact]
-    public async Task CreateClientAsync_ShouldThrowException_WhenCifExists()
+    public async Task CreateClientAsync_ShouldThrowException_WhenRcNumberExists()
     {
         // Arrange
         var tenantId = "tenant-123";
-        var cif = "EXISTING_CIF";
-        var email = "new@example.com";
+        var iceNumber = "ICE111111111";
+        var rcNumber = "RC99999";
         
         _mockRepository
-            .Setup(x => x.EmailExistsAsync(email, tenantId, null))
+            .Setup(x => x.IceNumberExistsAsync(iceNumber, tenantId, null))
             .ReturnsAsync(false);
         
         _mockRepository
-            .Setup(x => x.CifExistsAsync(cif, tenantId, null))
+            .Setup(x => x.RcNumberExistsAsync(rcNumber, tenantId, null))
             .ReturnsAsync(true);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.CreateClientAsync(tenantId, "Name", cif, email, "", ""));
+            _service.CreateClientAsync(
+                tenantId, "Company", "Morocco", "Address",
+                iceNumber, rcNumber, "VAT999", "CNSS999",
+                "Industry", "Admin", "Billing",
+                "2024-12-31", ""));
         
-        exception.Message.Should().Contain("CIF");
+        exception.Message.Should().Contain("RC number");
         exception.Message.Should().Contain("already in use");
         
         _mockRepository.Verify(x => x.CreateAsync(It.IsAny<Client>()), Times.Never);
@@ -123,8 +158,9 @@ public class ClientApplicationServiceTests
         {
             Id = clientId,
             TenantId = tenantId,
-            Name = "John Doe",
-            Email = "john@example.com"
+            CompanyName = "Test Company",
+            IceNumber = "ICE123456789",
+            Status = ClientStatus.Active
         };
         
         _mockRepository
@@ -158,7 +194,7 @@ public class ClientApplicationServiceTests
     }
 
     [Fact]
-    public async Task UpdateClientAsync_ShouldUpdateClient_WhenClientExistsAndEmailCifAreUnique()
+    public async Task UpdateClientAsync_ShouldUpdateClient_WhenClientExistsAndIceRcAreUnique()
     {
         // Arrange
         var clientId = Guid.NewGuid();
@@ -167,18 +203,18 @@ public class ClientApplicationServiceTests
         {
             Id = clientId,
             TenantId = tenantId,
-            Name = "Updated Name",
-            Cif = "CIF789",
-            Email = "updated@example.com",
+            CompanyName = "Updated Company",
+            IceNumber = "ICE999999999",
+            RcNumber = "RC99999",
             Status = ClientStatus.Inactive
         };
         
         _mockRepository
-            .Setup(x => x.EmailExistsAsync(updatedClient.Email, tenantId, clientId))
+            .Setup(x => x.IceNumberExistsAsync(updatedClient.IceNumber, tenantId, clientId))
             .ReturnsAsync(false);
         
         _mockRepository
-            .Setup(x => x.CifExistsAsync(updatedClient.Cif, tenantId, clientId))
+            .Setup(x => x.RcNumberExistsAsync(updatedClient.RcNumber, tenantId, clientId))
             .ReturnsAsync(false);
         
         _mockRepository
@@ -187,60 +223,70 @@ public class ClientApplicationServiceTests
 
         // Act
         var result = await _service.UpdateClientAsync(
-            clientId, tenantId, updatedClient.Name, updatedClient.Cif, updatedClient.Email,
-            "", "", ClientStatus.Inactive);
+            clientId, tenantId, updatedClient.CompanyName, "Morocco", "New Address",
+            updatedClient.IceNumber, updatedClient.RcNumber, "VAT999", "CNSS999",
+            "Technology", "Admin", "Billing",
+            ClientStatus.Inactive, "2024-12-31", "");
 
         // Assert
         result.Should().NotBeNull();
-        result.Name.Should().Be(updatedClient.Name);
-        result.Cif.Should().Be(updatedClient.Cif);
-        result.Email.Should().Be(updatedClient.Email);
+        result!.CompanyName.Should().Be(updatedClient.CompanyName);
+        result.IceNumber.Should().Be(updatedClient.IceNumber);
+        result.RcNumber.Should().Be(updatedClient.RcNumber);
         result.Status.Should().Be(ClientStatus.Inactive);
         
         _mockRepository.Verify(x => x.UpdateAsync(It.IsAny<Client>()), Times.Once);
     }
 
     [Fact]
-    public async Task UpdateClientAsync_ShouldThrowException_WhenEmailAlreadyExists()
+    public async Task UpdateClientAsync_ShouldThrowException_WhenIceNumberAlreadyExists()
     {
         // Arrange
         var clientId = Guid.NewGuid();
         var tenantId = "tenant-123";
-        var email = "existing@example.com";
+        var iceNumber = "ICE555555555";
         
         _mockRepository
-            .Setup(x => x.EmailExistsAsync(email, tenantId, clientId))
+            .Setup(x => x.IceNumberExistsAsync(iceNumber, tenantId, clientId))
             .ReturnsAsync(true);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.UpdateClientAsync(clientId, tenantId, "Name", "CIF456", email, "", "", ClientStatus.Active));
+            _service.UpdateClientAsync(
+                clientId, tenantId, "Company", "Morocco", "Address",
+                iceNumber, "RC123", "VAT123", "CNSS123",
+                "Industry", "Admin", "Billing",
+                ClientStatus.Active, "2024-12-31", ""));
         
         _mockRepository.Verify(x => x.UpdateAsync(It.IsAny<Client>()), Times.Never);
     }
 
     [Fact]
-    public async Task UpdateClientAsync_ShouldThrowException_WhenCifAlreadyExists()
+    public async Task UpdateClientAsync_ShouldThrowException_WhenRcNumberAlreadyExists()
     {
         // Arrange
         var clientId = Guid.NewGuid();
         var tenantId = "tenant-123";
-        var cif = "EXISTING_CIF";
-        var email = "unique@example.com";
+        var iceNumber = "ICE666666666";
+        var rcNumber = "RC88888";
         
         _mockRepository
-            .Setup(x => x.EmailExistsAsync(email, tenantId, clientId))
+            .Setup(x => x.IceNumberExistsAsync(iceNumber, tenantId, clientId))
             .ReturnsAsync(false);
         
         _mockRepository
-            .Setup(x => x.CifExistsAsync(cif, tenantId, clientId))
+            .Setup(x => x.RcNumberExistsAsync(rcNumber, tenantId, clientId))
             .ReturnsAsync(true);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.UpdateClientAsync(clientId, tenantId, "Name", cif, email, "", "", ClientStatus.Active));
+            _service.UpdateClientAsync(
+                clientId, tenantId, "Company", "Morocco", "Address",
+                iceNumber, rcNumber, "VAT123", "CNSS123",
+                "Industry", "Admin", "Billing",
+                ClientStatus.Active, "2024-12-31", ""));
         
-        exception.Message.Should().Contain("CIF");
+        exception.Message.Should().Contain("RC number");
         exception.Message.Should().Contain("already in use");
         
         _mockRepository.Verify(x => x.UpdateAsync(It.IsAny<Client>()), Times.Never);
@@ -255,7 +301,7 @@ public class ClientApplicationServiceTests
         var deletedBy = "user@example.com";
         
         _mockRepository
-            .Setup(x => x.DeleteAsync(clientId, tenantId, deletedBy))
+            .Setup(x => x.DeleteAsync(clientId, tenantId, It.IsAny<string>()))
             .ReturnsAsync(true);
 
         // Act
@@ -263,7 +309,7 @@ public class ClientApplicationServiceTests
 
         // Assert
         result.Should().BeTrue();
-        _mockRepository.Verify(x => x.DeleteAsync(clientId, tenantId, deletedBy), Times.Once);
+        _mockRepository.Verify(x => x.DeleteAsync(clientId, tenantId, It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
@@ -274,7 +320,7 @@ public class ClientApplicationServiceTests
         var tenantId = "tenant-123";
         
         _mockRepository
-            .Setup(x => x.DeleteAsync(clientId, tenantId, null))
+            .Setup(x => x.DeleteAsync(clientId, tenantId, It.IsAny<string>()))
             .ReturnsAsync(false);
 
         // Act
@@ -291,8 +337,8 @@ public class ClientApplicationServiceTests
         var tenantId = "tenant-123";
         var clients = new List<Client>
         {
-            new Client { Id = Guid.NewGuid(), Name = "Client 1", TenantId = tenantId },
-            new Client { Id = Guid.NewGuid(), Name = "Client 2", TenantId = tenantId }
+            new Client { Id = Guid.NewGuid(), CompanyName = "Company A", TenantId = tenantId },
+            new Client { Id = Guid.NewGuid(), CompanyName = "Company B", TenantId = tenantId }
         };
         
         _mockRepository
@@ -326,5 +372,66 @@ public class ClientApplicationServiceTests
 
         // Assert
         _mockRepository.Verify(x => x.ListAsync(tenantId, expectedPage, expectedPageSize, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateClientAsync_ShouldNotValidateIceNumber_WhenEmpty()
+    {
+        // Arrange
+        var tenantId = "tenant-123";
+        
+        _mockRepository
+            .Setup(x => x.CreateAsync(It.IsAny<Client>()))
+            .ReturnsAsync((Client c) =>
+            {
+                c.Id = Guid.NewGuid();
+                c.CreatedAt = DateTime.UtcNow;
+                c.UpdatedAt = DateTime.UtcNow;
+                return c;
+            });
+
+        // Act
+        var result = await _service.CreateClientAsync(
+            tenantId, "Company", "Morocco", "Address",
+            "", "", "", "",  // All business numbers empty
+            "", "", "",
+            "2024-12-31", "");
+
+        // Assert
+        result.Should().NotBeNull();
+        
+        // Should not check existence for empty values
+        _mockRepository.Verify(x => x.IceNumberExistsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid?>()), Times.Never);
+        _mockRepository.Verify(x => x.RcNumberExistsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateClientAsync_ShouldReturnNull_WhenClientDoesNotExist()
+    {
+        // Arrange
+        var clientId = Guid.NewGuid();
+        var tenantId = "tenant-123";
+        
+        _mockRepository
+            .Setup(x => x.IceNumberExistsAsync(It.IsAny<string>(), tenantId, clientId))
+            .ReturnsAsync(false);
+        
+        _mockRepository
+            .Setup(x => x.RcNumberExistsAsync(It.IsAny<string>(), tenantId, clientId))
+            .ReturnsAsync(false);
+        
+        _mockRepository
+            .Setup(x => x.UpdateAsync(It.IsAny<Client>()))
+            .ReturnsAsync((Client?)null);
+
+        // Act
+        var result = await _service.UpdateClientAsync(
+            clientId, tenantId, "Company", "Morocco", "Address",
+            "ICE777777777", "RC77777", "VAT777", "CNSS777",
+            "Industry", "Admin", "Billing",
+            ClientStatus.Active, "2024-12-31", "");
+
+        // Assert
+        result.Should().BeNull();
     }
 }
