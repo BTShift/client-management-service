@@ -1,6 +1,4 @@
-using ClientManagement.Contract.Events;
-
-namespace ClientManagement.Contract.SagaEvents;
+namespace ClientManagement.Contract.Events;
 
 public record ClientManagementInitializedEvent : IBaseEvent
 {

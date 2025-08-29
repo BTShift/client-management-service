@@ -2,7 +2,8 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using ClientManagement.Infrastructure.Data;
 using ClientManagement.Domain.Entities;
-using ClientManagement.Contract.SagaEvents;
+using ClientManagement.Contract.Commands;
+using ClientManagement.Contract.Events;
 
 namespace ClientManagement.Api.Consumers;
 

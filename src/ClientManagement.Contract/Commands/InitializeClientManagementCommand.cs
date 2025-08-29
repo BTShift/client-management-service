@@ -1,11 +1,8 @@
-using ClientManagement.Contract.Events;
+namespace ClientManagement.Contract.Commands;
 
-namespace ClientManagement.Contract.SagaEvents;
-
-public record InitializeClientManagementCommand : IBaseEvent
+public record InitializeClientManagementCommand : IBaseCommand
 {
     public Guid CorrelationId { get; init; }
-    public DateTime Timestamp { get; init; } = DateTime.UtcNow;
     public string TenantId { get; init; } = string.Empty;
     public string TenantName { get; init; } = string.Empty;
     public string DatabaseName { get; init; } = string.Empty;
