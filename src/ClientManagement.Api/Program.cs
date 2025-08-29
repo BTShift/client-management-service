@@ -63,10 +63,12 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Add Shift Messaging Infrastructure
-// Consumer re-enabled after fixing message contract conflicts
+// TODO: Fix InitializeClientManagementConsumer - it's causing MassTransit topology binding issues
+// The InitializeClientManagementCommand and ClientManagementInitializedEvent need to implement proper base interfaces
+// Temporarily disabled to get service running
 builder.Services.AddShiftMessaging(builder.Configuration, consumers =>
 {
-    consumers.AddConsumer<InitializeClientManagementConsumer>();
+    // consumers.AddConsumer<InitializeClientManagementConsumer>();
 });
 
 // Add Authorization
