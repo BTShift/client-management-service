@@ -1,4 +1,4 @@
-namespace ClientManagement.Contract.Commands;
+namespace ClientManagement.Contract.SagaEvents;
 
 public record InitializeClientManagementCommand
 {
