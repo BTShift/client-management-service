@@ -4,6 +4,7 @@ using ClientManagement.Infrastructure.Services;
 using ClientManagement.Api.Services;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Shift.Messaging.Infrastructure.Extensions;
+using ClientManagement.Api.Consumers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,9 +63,11 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Add Shift Messaging Infrastructure
-// Client Management Service doesn't have any consumers yet
-// It only publishes events for other services to consume
-builder.Services.AddShiftMessaging(builder.Configuration);
+// Client Management Service now has consumers for tenant initialization
+builder.Services.AddShiftMessaging(builder.Configuration, consumers =>
+{
+    consumers.AddConsumer<InitializeClientManagementConsumer>();
+});
 
 // Add Authorization
 builder.Services.AddAuthorization();
