@@ -1,0 +1,82 @@
+name: Publish NuGet Package
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/ClientManagement.Contract/**'
+  release:
+    types: [published]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  PROJECT_PATH: 'src/ClientManagement.Contract/ClientManagement.Contract.csproj'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.PROJECT_PATH }}
+      
+    - name: Build
+      run: dotnet build ${{ env.PROJECT_PATH }} --configuration Release --no-restore
+      
+    - name: Extract version from csproj
+      id: version
+      run: |
+        VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" ${{ env.PROJECT_PATH }})
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Extracted version: $VERSION"
+        
+    - name: Pack NuGet package
+      run: dotnet pack ${{ env.PROJECT_PATH }} --configuration Release --no-build --output ./artifacts
+      
+    - name: List package contents
+      run: |
+        echo "Generated packages:"
+        ls -la ./artifacts/
+        
+    - name: Publish to GitHub Packages
+      run: |
+        dotnet nuget push "./artifacts/*.nupkg" \
+          --source "https://nuget.pkg.github.com/BTShift/index.json" \
+          --api-key ${{ secrets.GITHUB_TOKEN }} \
+          --skip-duplicate
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Create GitHub Release (on version bump)
+      if: github.event_name == 'push'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: "contract-v${{ steps.version.outputs.version }}"
+        release_name: "ClientManagement Contract v${{ steps.version.outputs.version }}"
+        body: |
+          ## ClientManagement Contract v${{ steps.version.outputs.version }}
+          
+          This release contains the Client Management Service contract package with:
+          - Commands for client management operations
+          - Event contracts for domain events
+          - Generated code for service communication
+          
+          ### Usage
+          ```xml
+          <PackageReference Include="BTShift.ClientManagement.Contract" Version="${{ steps.version.outputs.version }}" />
+          ```
+        draft: false
+        prerelease: false
