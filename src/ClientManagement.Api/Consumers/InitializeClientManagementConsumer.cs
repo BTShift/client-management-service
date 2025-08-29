@@ -52,6 +52,7 @@ public class InitializeClientManagementConsumer : IConsumer<InitializeClientMana
             await context.Publish(new ClientManagementInitializedEvent
             {
                 CorrelationId = command.CorrelationId,
+                Timestamp = DateTime.UtcNow,
                 TenantId = command.TenantId,
                 SchemaCreated = true,
                 InitializedAt = DateTime.UtcNow
