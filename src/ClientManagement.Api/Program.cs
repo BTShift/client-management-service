@@ -4,6 +4,7 @@ using ClientManagement.Infrastructure.Services;
 using ClientManagement.Api.Services;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Shift.Messaging.Infrastructure.Extensions;
+using ClientManagement.Api.Consumers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,9 +63,11 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Add Shift Messaging Infrastructure
-// TODO: Temporarily disabled consumer due to DI issues in Railway deployment
-// Need to investigate MassTransit configuration compatibility
-builder.Services.AddShiftMessaging(builder.Configuration);
+// Consumer re-enabled after fixing message contract conflicts
+builder.Services.AddShiftMessaging(builder.Configuration, consumers =>
+{
+    consumers.AddConsumer<InitializeClientManagementConsumer>();
+});
 
 // Add Authorization
 builder.Services.AddAuthorization();
