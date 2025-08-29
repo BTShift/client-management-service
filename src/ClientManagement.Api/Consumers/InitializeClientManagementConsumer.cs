@@ -4,28 +4,28 @@ using ClientManagement.Infrastructure.Data;
 using ClientManagement.Domain.Entities;
 using ClientManagement.Contract.Commands;
 using ClientManagement.Contract.Events;
-using Shift.Messaging.Infrastructure.Consumers;
 
 namespace ClientManagement.Api.Consumers;
 
-public class InitializeClientManagementConsumer : BaseConsumer<InitializeClientManagementCommand>
+public class InitializeClientManagementConsumer : IConsumer<InitializeClientManagementCommand>
 {
     private readonly ILogger<InitializeClientManagementConsumer> _logger;
     private readonly IServiceProvider _serviceProvider;
     
     public InitializeClientManagementConsumer(
         ILogger<InitializeClientManagementConsumer> logger,
-        IServiceProvider serviceProvider) : base(logger)
+        IServiceProvider serviceProvider)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
     }
 
-    protected override async Task ProcessMessage(ConsumeContext<InitializeClientManagementCommand> context)
+    public async Task Consume(ConsumeContext<InitializeClientManagementCommand> context)
     {
         var command = context.Message;
         
-        _logger.LogInformation("Initializing client management for tenant {TenantId}", command.TenantId);
+        _logger.LogInformation("Initializing client management for tenant {TenantId} with correlation {CorrelationId}", 
+            command.TenantId, command.CorrelationId);
 
         try
         {
