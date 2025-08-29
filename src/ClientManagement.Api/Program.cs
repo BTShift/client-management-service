@@ -3,8 +3,9 @@ using ClientManagement.Application.Services;
 using ClientManagement.Infrastructure.Services;
 using ClientManagement.Api.Services;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Shift.Messaging.Infrastructure.Extensions;
+using MassTransit;
 using ClientManagement.Api.Consumers;
+using Shift.Messaging.Infrastructure.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,12 +63,14 @@ builder.Services.AddHealthChecks()
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// Add Shift Messaging Infrastructure
-// Saga events now implement IBaseEvent interface for proper MassTransit topology binding
-builder.Services.AddShiftMessaging(builder.Configuration, consumers =>
-{
-    consumers.AddConsumer<InitializeClientManagementConsumer>();
-});
+// Configure messaging with shared infrastructure
+builder.Services.AddShiftMessaging(
+    builder.Configuration,
+    configureConsumers: x =>
+    {
+        // Add the saga consumer for handling InitializeClientManagementCommand
+        x.AddConsumer<InitializeClientManagementConsumer>();
+    });
 
 // Add Authorization
 builder.Services.AddAuthorization();
