@@ -66,9 +66,9 @@ public class InitializeClientManagementConsumer : IConsumer<InitializeClientMana
                 
                 var connection = dbContext.Database.GetDbConnection();
                 await connection.OpenAsync();
-                using var command = connection.CreateCommand();
-                command.CommandText = sql;
-                var result = await command.ExecuteScalarAsync();
+                using var dbCommand = connection.CreateCommand();
+                dbCommand.CommandText = sql;
+                var result = await dbCommand.ExecuteScalarAsync();
                 var hasMigrationHistory = result != null && (bool)result;
                 await connection.CloseAsync();
                 
