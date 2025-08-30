@@ -41,8 +41,9 @@ public class InitializeClientManagementConsumer : IConsumer<InitializeClientMana
             
             await using var dbContext = new ClientManagementDbContext(options);
             
-            // Ensure database and schema exist
-            await dbContext.Database.EnsureCreatedAsync();
+            // Apply migrations to ensure database schema is properly created
+            // This creates the schema with correct column names from migrations
+            await dbContext.Database.MigrateAsync();
             
             // Initialize default client management data
             await InitializeDefaultData(dbContext, command.TenantId);
