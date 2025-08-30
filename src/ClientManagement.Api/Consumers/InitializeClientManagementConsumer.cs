@@ -41,9 +41,49 @@ public class InitializeClientManagementConsumer : IConsumer<InitializeClientMana
             
             await using var dbContext = new ClientManagementDbContext(options);
             
-            // Apply migrations to ensure database schema is properly created
-            // This creates the schema with correct column names from migrations
-            await dbContext.Database.MigrateAsync();
+            // Check if this is a fresh database or one that needs migration
+            var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
+            
+            if (pendingMigrations.Any())
+            {
+                _logger.LogInformation("Applying {Count} migrations for tenant {TenantId}", 
+                    pendingMigrations.Count(), command.TenantId);
+                
+                // Apply migrations to ensure database schema is properly created
+                // This creates the schema with correct column names from migrations
+                await dbContext.Database.MigrateAsync();
+            }
+            else
+            {
+                // Database already has schema (either from migrations or EnsureCreated)
+                // Check if we have the migration history table
+                var sql = @"
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'client_management' 
+                        AND table_name = '__EFMigrationsHistory'
+                    )";
+                
+                var connection = dbContext.Database.GetDbConnection();
+                await connection.OpenAsync();
+                using var command = connection.CreateCommand();
+                command.CommandText = sql;
+                var result = await command.ExecuteScalarAsync();
+                var hasMigrationHistory = result != null && (bool)result;
+                await connection.CloseAsync();
+                
+                if (!hasMigrationHistory)
+                {
+                    _logger.LogWarning("Database exists without migration history for tenant {TenantId}. " +
+                        "This database was likely created with EnsureCreated. " +
+                        "Future schema updates may require manual intervention.", command.TenantId);
+                }
+                else
+                {
+                    _logger.LogInformation("Database schema already up-to-date for tenant {TenantId}", 
+                        command.TenantId);
+                }
+            }
             
             // Initialize default client management data
             await InitializeDefaultData(dbContext, command.TenantId);
